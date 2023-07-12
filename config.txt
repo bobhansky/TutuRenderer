@@ -1,0 +1,9 @@
+imsize 1024 1024
+eye 278 273 -800
+viewdir 0 0 1
+hfov 40
+updir 0 1 0
+bkgcolor 0 0 0 1.0
+
+
+
