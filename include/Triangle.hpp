@@ -34,7 +34,7 @@ public:
 		Vector3f normal = crossProduct(E1, E2);
 		normal = normalized(normal);
 
-		// if the ray is parallel to the normal, then no inter
+		// if the ray is parallel to the surface, then no inter
 		// I CONSIDER undersurface ray, so it's not >=
 		if (dir.dot(normal) == 0.f)
 			return false;

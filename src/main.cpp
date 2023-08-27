@@ -63,11 +63,11 @@ int main(int argc, char* argv[]) {
 	lightmtl.n = 64;
 	lightmtl.alpha = 1;
 	lightmtl.eta = 1.52;
-	lightmtl.emission = Vector3f(47.8348f , 38.5664f , 31.0808f );
+	lightmtl.emission = Vector3f(47.8348f, 38.5664f, 31.0808f);
 
-	
+
 	objl::Loader floor;
-	if (floor.LoadFile("./model/floor.obj")) 
+	if (floor.LoadFile("./model/floor.obj"))
 		g.loadObj(floor, whitemtl, -1, -1);
 
 	objl::Loader shortBox;
@@ -89,13 +89,13 @@ int main(int argc, char* argv[]) {
 	objl::Loader light;
 	if (light.LoadFile("./model/light.obj"))
 		g.loadObj(light, lightmtl, -1, -1);
-	
+
 	Renderer r(&g);
 	auto start = std::chrono::system_clock::now();		// #include <chrono>
 	Intersection inter;
-	Vector3f ray = {  364.180267, 280.932098, 265.241486 };
+	Vector3f ray = { 364.180267, 280.932098, 265.241486 };
 	Vector3f dir = { 0.364443779, -0.457471699, -0.811110616 };
-//	r.interStrategy->UpdateInter(inter, r.g->scene,ray, dir);
+	//	r.interStrategy->UpdateInter(inter, r.g->scene,ray, dir);
 
 	r.render();
 	g.generate();
@@ -103,10 +103,10 @@ int main(int argc, char* argv[]) {
 
 	auto end = std::chrono::system_clock::now();
 	std::cout << "\nRendering Time consumed: \n";
-	std::cout<< std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
+	std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
 	return 0;
 
-	
+
 
 
 
