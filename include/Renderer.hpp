@@ -24,7 +24,7 @@
 
 #define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -171,20 +171,25 @@ public:
 		// if ray hit emissive object, return the L_o
 		if (inter.mtlcolor.hasEmission())	return inter.mtlcolor.emission;
 
-		/*
+		
 		// **************** TEXUTRE ********************
-			// if diffuse texture is activated, change mtlcolor.diffuse to texture data
+		// if diffuse texture is activated, change mtlcolor.diffuse to texture data
 		if (! FLOAT_EQUAL(-1.f, inter.textureIndex) && !FLOAT_EQUAL(-1.f, inter.textPos.x) 
 			&& !FLOAT_EQUAL(-1.f, inter.textPos.y)) {
-			inter.mtlcolor.diffuse = g->textures.at(inter.textureIndex)
-				.getRGBat(inter.textPos.x, inter.textPos.y);
+			if (g->textures.size() <= inter.textureIndex) {
+				std::cout << 
+					"\ninter.textureIndex is greater than texuture.size()\nImport texture files in config.txt \n";
+				exit(0);
+				}
+				inter.mtlcolor.diffuse = g->textures.at(inter.textureIndex)
+					.getRGBat(inter.textPos.x, inter.textPos.y);
 		}
 		// if do shading with normal map
 		if (inter.normalMapIndex != -1) {
 			changeNormalDir(inter);
 		}
 		// **************** TEXUTRE ENDS ****************
-		*/
+		
 
 		Vector3f dir_illu(0.f);
 		Vector3f indir_illu(0.f);
