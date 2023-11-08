@@ -132,6 +132,9 @@ public:
 	}
 
 	void samplePoint(Intersection& inter, float& pdf) override {
+		// 10/1/2023:
+		// is it correct? maybe I should Inverse Trasnform sampling?
+
 		// theta: angle from +x to yz plane	
 		// phi: angle from +z to xy plane
 		// 7/6/2023: 

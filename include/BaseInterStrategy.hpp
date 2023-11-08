@@ -7,8 +7,8 @@
 // loop through all the objects to test intersection
 // the elementary method
 class BaseInterStrategy : public IIntersectStrategy {
-	void UpdateInter(Intersection& inter, Scene& sce,
-		const Vector3f& rayOrig, const Vector3f& rayDir) {
+	virtual void UpdateInter(Intersection& inter, Scene& sce,
+		const Vector3f& rayOrig, const Vector3f& rayDir) override {
 
 		for (const auto& obj : sce.objList) {
 			Intersection interTemp;

@@ -5,8 +5,8 @@
 #include "Vector.hpp"
 
 class BVHStrategy : public IIntersectStrategy {
-	void UpdateInter(Intersection& inter, Scene& sce, 
-		const Vector3f & rayOrig, const Vector3f& rayDir) {
+	virtual void UpdateInter(Intersection& inter, Scene& sce, 
+		const Vector3f & rayOrig, const Vector3f& rayDir)override {
 		inter = getIntersection(sce.BVHaccelerator->getNode(), rayOrig, rayDir);
 	}
 
@@ -26,7 +26,6 @@ class BVHStrategy : public IIntersectStrategy {
 		// if ray miss this bound
 		if (!node->bound.IntersectRay(rayOrig, rayDir))
 			return 1;
-
 
 		Intersection inter;
 		// if the node is a leaf node

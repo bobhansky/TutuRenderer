@@ -93,7 +93,7 @@ bool FLOAT_EQUAL(const float& x, const float& y) {
 	return (fabs(x - y) < 0.00001f);
 }
 
-/// <summary
+/// <summary		// ctrl + / 
 /// solve
 /// A*t^2 + B*t + C = 0
 /// </summary>
@@ -111,13 +111,13 @@ void solveQuadratic(float& t1, float& t2, float& A, float& B, float& C) {
 	}
 	// one real solution
 	else if (discriminant == 0) {
-		t1 = (-B + sqrtf(discriminant)) / 2 * A;
+		t1 = (-B + sqrtf(discriminant)) / (2 * A);
 		t2 = t1;
 	}
 	// two real solution
 	else {
-		t1 = (-B + sqrtf(discriminant)) / 2 * A;
-		t2 = (-B - sqrtf(discriminant)) / 2 * A;
+		t1 = (-B + sqrtf(discriminant)) / (2 * A);
+		t2 = (-B - sqrtf(discriminant)) / (2 * A);
 	}
 	
 	// always make t1 the smaller result
@@ -127,6 +127,7 @@ void solveQuadratic(float& t1, float& t2, float& A, float& B, float& C) {
 
 
 // check if a ele existing within a string vector
+
 bool existIn(std::string& ele, std::vector<std::string>& v) {
 	for (auto i : v) {
 		if (ele.compare(i) == 0) return true;
@@ -159,7 +160,6 @@ void showProgress(float prog) {
 		else if (i == pos) std::cout << ">";
 		else std::cout << " ";
 	}
-
 
 	std::cout << int(prog * 100.0) << " %\r";
 }
