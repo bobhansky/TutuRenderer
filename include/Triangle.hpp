@@ -69,10 +69,6 @@ public:
 		}
 		return false;
 		
-		
-
-
-
 
 		/*
 		// OR use brutal force

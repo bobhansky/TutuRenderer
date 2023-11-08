@@ -110,7 +110,6 @@ public:
 				//if (x == 429 && y == 168)
 				//	PRINT = true;
 
-
 				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
 				Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
@@ -221,8 +220,8 @@ public:
 		dir_illu.y = clamp(0, 1, dir_illu.y);
 		dir_illu.z = clamp(0, 1, dir_illu.z);
 
+
 		// ****** Indirect Illumination
-		
 		
 		// test RussianRoulette first
 		if (getRandomFloat() > Russian_Roulette) {
@@ -333,6 +332,7 @@ public:
 	// point light 
 	// return 0 if there's a object between the intersection and the light source
 	// return 1 otherwise
+	// 10/25/2023 23:48  use InterStrategy instead?
 	float getShadowCoeffi(Intersection& p, Vector3f& lightPos) {
 		Vector3f orig = p.pos;
 		orig = orig + 0.0005f * p.nDir;
@@ -348,10 +348,8 @@ public:
 				if (i->isLight || i->mtlcolor.hasEmission()) continue;				// do not test with light avatar
 				Intersection p_light_inter;
 
-
 				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance && !p_light_inter.obj->isLight) {
 					res = res * (1 - p_light_inter.mtlcolor.alpha);
-
 				}
 			}
 		}
@@ -360,7 +358,6 @@ public:
 				return 0;
 			return 1;
 		}
-
 		return res;
 	}
 
@@ -431,8 +428,8 @@ public:
 	// pdf of that inter is, 1/area of THE object surface area
 	void sampleLight(Intersection& inter, float& pdf) {
 		static std::vector<Object*> lightList;
-		int size = lightList.size();
 		static float totalArea = 0;
+		int size = lightList.size();
 		
 		// if first time call it, put all the emissive object into lightList
 		if (size == 0) {
@@ -441,7 +438,6 @@ public:
 					lightList.emplace_back(i.get());
 					totalArea += i->getArea();
 				}
-				
 			}
 		}
 
@@ -451,6 +447,7 @@ public:
 		Object* lightObject = lightList.at(index);
 
 		lightObject->samplePoint(inter, pdf);
+		// independent event p(a&&b) == p(a) *  p(b)
 		pdf = pdf * lightObject->getArea() / totalArea;
 	}
 };

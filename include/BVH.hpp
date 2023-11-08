@@ -39,7 +39,7 @@ public:
 		std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
 	}
 	
-	~BVHAccel() {
+	~BVHAccel() {	// 9/18/2023    might have a function to delete the tree
 		delete root;
 	}
 

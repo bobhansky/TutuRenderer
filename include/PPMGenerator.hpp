@@ -119,7 +119,7 @@ public:
 				t->initializeBound();
 				scene.add(std::move(t));
 			}
-			std::cout << "loaded sucessfully\n";
+			std::cout << "object loaded sucessfully\n";
 		}
 		
 	}
@@ -854,8 +854,5 @@ public:
 		}
 		textList.emplace_back(temptext);
 	}
-
-
-
 
 };

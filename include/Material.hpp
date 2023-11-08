@@ -76,15 +76,16 @@ public:
 		{
 		case LAMBERTIAN: {
 			// **** inverse transformation sampling
-			// pbrt 13.6.1
+			// pbrt 13.6.1  *important
 			// https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/2D_Sampling_with_Multidimensional_Transformations
+			// https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Transforming_between_Distributions
+			// 
+			// 3.6 Approximating Distributions
 			// https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#generatingrandomdirections/uniformsamplingahemisphere
 			// https://www.youtube.com/watch?v=rnBbYsysPaU&t=1s
 
 			// 1. generate a random direction in sphere coordinate
 			// 2. convert it to world corrdinate
-			
-			
 			float r1 = getRandomFloat();
 			float r2 = getRandomFloat();
 			float cosTheta = r1;
@@ -133,7 +134,7 @@ public:
 			a = { 0.f, 1.f, 0.f };
 		else a = { 1.f, 0.f, 0.f };
 
-		Vector3f T = crossProduct(a, N); // y 
+		Vector3f T = crossProduct(a, N); // y   X cross Y == Z      then S cross T should == N
 		Vector3f S = crossProduct(T, N); // x
 		
 		return normalized(dir.x * S + dir.y * T + dir.z * N);
