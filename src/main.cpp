@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	
+
 	PPMGenerator g(argv[1]);
 
 	Material redmtl;
@@ -92,6 +92,7 @@ int main(int argc, char* argv[]) {
 	Renderer r(&g);
 	auto start = std::chrono::system_clock::now();		// #include <chrono>
 
+
 	r.render();
 	g.generate();
 
@@ -99,9 +100,7 @@ int main(int argc, char* argv[]) {
 	auto end = std::chrono::system_clock::now();
 	std::cout << "\nRendering Time consumed: \n";
 	std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
-	
-
-
 	return 0;
+
 
 }

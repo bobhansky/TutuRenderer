@@ -595,10 +595,10 @@ public:
 
 	// *************************************** helper functions ***************************************
 
-	// get the rgb array index
+	// get the rgb array index, convert 2d mattrix position to 1d
 	// row major, then index = y*width + x
 	// note in ppm, upper left is (0,0)
-	size_t getIndex(int x, int y) {
+	inline size_t getIndex(int x, int y) {
 		return y * width + x;
 	}
 

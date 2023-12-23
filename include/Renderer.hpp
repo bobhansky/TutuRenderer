@@ -7,6 +7,7 @@
 #include<vector>
 #include<cmath>
 #include<stack>
+#include<thread>
 
 #include "Vector.hpp"
 #include "global.hpp"
@@ -24,11 +25,37 @@
 
 #define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 1;
+int SPP = 128;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
-#define EXPEDITE true			// if you need BVH to expedite intersection, set it true
+#define EXPEDITE true			// BVH to expedite intersection
+#define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
+// 12/23/2023  when it's 3 sometimes error happen in debug mode
+// exited with code -1073741819. (first time compiling will most likely result in this)
+#define N_THREAD 16		    
+
+
+// thread argument
+// 12/23/2023: unknown reason, if I put start and end inside this arg struct
+// instead of passing them as thread function parameters like Im doing now
+// some of upper img is not rendered 
+struct Thread_arg {
+	// ul, delta_v  delta_h  g->rgb  eyePos
+	const Vector3f* ul;
+	const Vector3f* delta_v;
+	const Vector3f* delta_h;
+	const Vector3f* c_off_h;
+	const Vector3f* c_off_v;
+	std::vector<Vector3i>* rgb_array;
+	const Vector3f* eyePos;
+	int Ncol;
+	Renderer* r;
+	
+};
+
+void sub_render(Thread_arg*, int, int, int);
+
 
 /// <summary>
 /// this is the class perform computer graphics algorithms
@@ -40,13 +67,9 @@ public:
 	Renderer(PPMGenerator* ppmg) {
 		g = ppmg;
 
-		if (EXPEDITE) {
-			interStrategy = new BVHStrategy();
-		}
-		else {
-			interStrategy = new BaseInterStrategy();
-		}
-
+		if (EXPEDITE) interStrategy = new BVHStrategy();
+		else interStrategy = new BaseInterStrategy();
+		
 		g->scene.initializeBVH();
 	}
 
@@ -55,10 +78,9 @@ public:
 	}
 
 
+
 	// takes a PPMGenerator and render its rgb array
 	void render() {
-		// initialize scene (bounding box)
-
 		// we shoot a ray from eyePos, trough each pixel, 
 		// to the scene. update the rgb info if we hit objects
 		// v: vertical unit vector of the view plane
@@ -103,6 +125,48 @@ public:
 
 		// trace ray: cast a ray from eyePos through each pixel
 		// try to get the tNear and its intersection properties
+
+		#ifdef MULTITHREAD
+		int rowPerthd = g->height / N_THREAD;
+		std::thread thds[N_THREAD];
+	
+		for (int i = 0; i < N_THREAD - 1; i++) {
+			Thread_arg arg{
+				&ul,
+				&delta_v,
+				&delta_h,
+				&c_off_h,
+				&c_off_v,
+				&g->rgb,
+				&eyePos,
+				g->width,
+				this
+			};
+			thds[i] = std::thread(sub_render, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
+		}
+		// last thread
+		Thread_arg arg_end{
+				&ul,
+				&delta_v,
+				&delta_h,
+				&c_off_h,
+				&c_off_v,
+				&g->rgb,
+				&eyePos,
+				g->width,
+				this
+		};
+		thds[N_THREAD-1] = std::thread(sub_render, &arg_end, N_THREAD-1, (N_THREAD - 1) * rowPerthd, g->height);
+
+		for (int i = N_THREAD-1; i >= 0; i--) {
+			thds[i].join();
+		}
+
+		#endif
+
+
+		// single thread
+		#ifndef MULTITHREAD
 		for (int y = 0; y < g->height; y++) {
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
@@ -147,6 +211,8 @@ public:
 		}
 		showProgress(1.f);
 		std::cout << std::endl;
+		#endif // !
+
 	}
 
 public:
@@ -450,7 +516,53 @@ public:
 		// independent event p(a&&b) == p(a) *  p(b)
 		pdf = pdf * lightObject->getArea() / totalArea;
 	}
+
 };
+
+
+
+// helper function for multithreads rendering
+// each thread call this funciton
+void sub_render(Thread_arg* arg, int threadID, int s, int e) {
+
+	const Vector3f ul = *arg->ul;
+	const Vector3f delta_v = *arg->delta_v;
+	const Vector3f delta_h = *arg->delta_h;
+	const Vector3f c_off_h = *arg->c_off_h;
+	const Vector3f c_off_v = *arg->c_off_v;
+	std::vector<Vector3i>* rgb_array = arg->rgb_array;
+	const Vector3f eyePos = *arg->eyePos;
+	int Ncol = arg->Ncol;
+	Renderer *r = arg->r;
+	PPMGenerator* g = r->g;
+
+	for (int y = s; y < e; y++) {
+		for (int x = 0; x < Ncol; x++) {
+			Vector3i& color = rgb_array->at(g->getIndex(x, y));
+			Vector3f rayDir = { 0,0,0 };
+			Vector3f pixelPos = ul + x * delta_h + y * delta_v + c_off_v + c_off_v;
+			rayDir = normalized((pixelPos - eyePos));
+
+			// trace ray into each pixel
+			Vector3f res;
+			for (int i = 0; i < SPP; i++) {
+				res = res + r->traceRay(eyePos, rayDir, 0);
+			}
+			res = res * SPP_inv;
+			// gamma correction
+			color.x = 255 * pow(clamp(0, 1, res.x), 0.6f);
+			color.y = 255 * pow(clamp(0, 1, res.y), 0.6f);
+			color.z = 255 * pow(clamp(0, 1, res.z), 0.6f);
+
+			// without
+			//color.x = 255 * clamp(0, 1, res.x);
+			//color.y = 255 * clamp(0, 1, res.y);
+			//color.z = 255 * clamp(0, 1, res.z);
+		}
+		showProgress((float)y / e);		// comment it out for a clean terminal
+	}
+	
+}
 
 
 
