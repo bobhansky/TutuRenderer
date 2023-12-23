@@ -105,6 +105,7 @@ public:
 			break;
 		}
 		case SPECULAR_REFLECTIVE: {
+			return 0;
 			break;
 
 		}
@@ -114,7 +115,6 @@ public:
 		}
 		}
 
-		
 	}
 
 	
