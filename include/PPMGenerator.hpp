@@ -265,12 +265,7 @@ public:
 				}
 			}
 
-			if (FLOAT_EQUAL(1.f, s->mtlcolor.diffuse.x) && FLOAT_EQUAL(1.f, s->mtlcolor.diffuse.y)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.diffuse.z) && FLOAT_EQUAL(1.f, s->mtlcolor.specular.x)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.specular.y) && FLOAT_EQUAL(1.f, s->mtlcolor.specular.z)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.ka) && FLOAT_EQUAL(1.f, s->mtlcolor.kd)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.ks) && FLOAT_EQUAL(0.f, s->mtlcolor.n))
-				s->isLight = true;
+
 
 			// push it into scene.objList
 			s->initializeBound();
@@ -309,14 +304,7 @@ public:
 
 
 			std::unique_ptr<Triangle> s = std::make_unique<Triangle>(t);
-			// if all attributes of mtlcolor is set to 
-			// 1 1 1 1 1 1 1 1 1 0, then it is a light source/light avatar
-			if (FLOAT_EQUAL(1.f, s->mtlcolor.diffuse.x) && FLOAT_EQUAL(1.f, s->mtlcolor.diffuse.y)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.diffuse.z) && FLOAT_EQUAL(1.f, s->mtlcolor.specular.x)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.specular.y) && FLOAT_EQUAL(1.f, s->mtlcolor.specular.z)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.ka) && FLOAT_EQUAL(1.f, s->mtlcolor.kd)
-				&& FLOAT_EQUAL(1.f, s->mtlcolor.ks) && FLOAT_EQUAL(0.f, s->mtlcolor.n))
-				s->isLight = true;
+
 
 			// see if texure is enable
 			if (isTextureOn) {

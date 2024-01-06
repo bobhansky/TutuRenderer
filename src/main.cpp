@@ -89,9 +89,9 @@ int main(int argc, char* argv[]) {
 	if (light.LoadFile("./model/light.obj"))
 		g.loadObj(light, lightmtl, -1, -1);
 
+
 	Renderer r(&g);
 	auto start = std::chrono::system_clock::now();		// #include <chrono>
-
 
 	r.render();
 	auto end = std::chrono::system_clock::now();

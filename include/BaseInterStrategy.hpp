@@ -32,10 +32,9 @@ class BaseInterStrategy : public IIntersectStrategy {
 		// if there's one valid intersection, thrn return 0
 		float res = 1;
 		for (auto& i : sce.objList) {
-			if (i.get() == p.obj) continue;			// do not test intersection with itself
-			if (i->isLight) continue;				// do not test with light avatar
-			Intersection p_light_inter;
+			if (i->mtlcolor.hasEmission()) continue; // do not test with light
 
+			Intersection p_light_inter;
 			if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance) {
 				res = res * (1 - p_light_inter.mtlcolor.alpha);
 			}
