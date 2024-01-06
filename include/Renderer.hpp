@@ -25,7 +25,7 @@
 
 #define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 128;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -33,7 +33,7 @@ float Russian_Roulette = 0.78f;
 #define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
 // 12/23/2023  when it's 3 sometimes error happen in debug mode
 // exited with code -1073741819. (first time compiling will most likely result in this)
-#define N_THREAD 16		    
+#define N_THREAD 20	    
 
 
 // thread argument
@@ -516,7 +516,6 @@ public:
 		// independent event p(a&&b) == p(a) *  p(b)
 		pdf = pdf * lightObject->getArea() / totalArea;
 	}
-
 };
 
 
@@ -559,7 +558,7 @@ void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 			//color.y = 255 * clamp(0, 1, res.y);
 			//color.z = 255 * clamp(0, 1, res.z);
 		}
-		showProgress((float)y / e);		// comment it out for a clean terminal
+		//showProgress((float)y / e);		// comment it out for a clean terminal
 	}
 	
 }

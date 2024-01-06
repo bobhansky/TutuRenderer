@@ -94,12 +94,13 @@ int main(int argc, char* argv[]) {
 
 
 	r.render();
-	g.generate();
-
-
 	auto end = std::chrono::system_clock::now();
 	std::cout << "\nRendering Time consumed: \n";
 	std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
+
+	std::cout << "output to img...\n";
+	g.generate();
+
 	return 0;
 
 

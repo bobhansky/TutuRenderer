@@ -127,7 +127,6 @@ void solveQuadratic(float& t1, float& t2, float& A, float& B, float& C) {
 
 
 // check if a ele existing within a string vector
-
 bool existIn(std::string& ele, std::vector<std::string>& v) {
 	for (auto i : v) {
 		if (ele.compare(i) == 0) return true;
