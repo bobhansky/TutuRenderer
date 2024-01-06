@@ -50,7 +50,7 @@ public:
 	}
 
 	bool hasEmission() {
-		return emission.norm() > 0.001f;
+		return emission.x || emission.y || emission.z ;
 	}
 
 	// BxDF, return vec3f of elements within [0,1] 
