@@ -76,7 +76,7 @@ public:
 		writeHeader();
 		writePixel();
 
-		std::cout << "Generating is done successfully!\n";
+		std::cout << "Generating image successfully.\n";
 		fout.clear();
 		fout.close();
 	}
@@ -99,13 +99,13 @@ public:
 						t->uv0 = Vector2f(v.TextureCoordinate.X, v.TextureCoordinate.Y);
 					}
 
-					if (j == 1) {
+					else if (j == 1) {
 						t->v1 = Vector3f(v.Position.X, v.Position.Y, v.Position.Z);
 						t->n1 = Vector3f(v.Normal.X, v.Normal.Y, v.Normal.Z);
 						t->uv1 = Vector2f(v.TextureCoordinate.X, v.TextureCoordinate.Y);
 					}
 
-					if (j == 2) {
+					else if (j == 2) {
 						t->v2 = Vector3f(v.Position.X, v.Position.Y, v.Position.Z);
 						t->n2 = Vector3f(v.Normal.X, v.Normal.Y, v.Normal.Z);
 						t->uv2 = Vector2f(v.TextureCoordinate.X, v.TextureCoordinate.Y);
@@ -572,6 +572,8 @@ public:
 				bumpIndex = size1 - 1;
 
 				// recover to requiered format (tangent plane)
+				// in normal map, x y components can be in range -1 to 1
+				// z from 0 to 1
 				for (int i = 0; i < normalMaps[bumpIndex].rgb.size();i++) {
 					Vector3f& c = normalMaps[bumpIndex].rgb[i];
 					c = c * 2.f;

@@ -19,8 +19,6 @@ struct BVHNode {
 	BVHNode* right;
 
 	~BVHNode() {
-		delete left;
-		delete right;
 	}
 };
 
@@ -39,8 +37,8 @@ public:
 		std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
 	}
 	
-	~BVHAccel() {	// 9/18/2023    might have a function to delete the tree
-		delete root;
+	~BVHAccel() {	
+		deleteBVHtree(root);
 	}
 
 	// build the BVH tree based on the objList
@@ -129,6 +127,16 @@ public:
 private:
 	std::vector<Object*> objects;	
 	BVHNode* root;					// root of the tree
+
+
+	void deleteBVHtree(BVHNode* node) {
+		if (!node) return;
+
+		if (node->left) deleteBVHtree(node->left);
+		if (node->right) deleteBVHtree(node->right);
+
+		delete node;
+	}
 };
 
 
@@ -184,3 +192,4 @@ bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& ray
 
 	return false;
 }
+
