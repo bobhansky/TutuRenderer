@@ -25,7 +25,7 @@
 
 #define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 1;
+int SPP = 512;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -33,7 +33,7 @@ float Russian_Roulette = 0.78f;
 #define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
 // 12/23/2023  when it's 3 sometimes error happen in debug mode
 // exited with code -1073741819. (first time compiling will most likely result in this)
-#define N_THREAD 20	    
+#define N_THREAD 20 
 
 
 // thread argument
@@ -266,8 +266,7 @@ public:
 		sampleLight(light_inter, light_pdf);
 		
 		// test if the ray is blocked in the middle 
-		if (FLOAT_EQUAL(0.f, getShadowCoeffi(inter, light_inter.pos))) {
-		}
+		if (isShadowRayBlocked(inter, light_inter.pos)) {}
 		else {	// ray is not blocked, then calculate the direct illumination
 			Vector3f L_i = light_inter.mtlcolor.emission;
 			Vector3f light_N = normalized(light_inter.nDir);
@@ -394,37 +393,34 @@ public:
 
 	
 
-	/**/
-	// point light 
-	// return 0 if there's a object between the intersection and the light source
-	// return 1 otherwise
-	// 10/25/2023 23:48  use InterStrategy instead?
-	float getShadowCoeffi(Intersection& p, Vector3f& lightPos) {
+	/// <summary>
+	/// shadow ray
+	/// </summary>
+	/// <param name="p">inter information</param>
+	/// <param name="lightPos">light position</param>
+	/// <returns>if the ray is blocked by non-emissive obj, return true</returns>
+	bool isShadowRayBlocked(Intersection& p, Vector3f& lightPos) {
 		Vector3f orig = p.pos;
 		orig = orig + 0.0005f * p.nDir;
 		Vector3f raydir = normalized(lightPos - orig);
 		float distance = (lightPos - orig).norm();
 
-		// loop through all the objects in the scene 
-		// if there's one valid intersection, thrn return 0
-		float res = 1;
 
 		if (!EXPEDITE) {
+			Intersection p_light_inter;
 			for (auto& i : g->scene.objList) {
-				if (i->isLight || i->mtlcolor.hasEmission()) continue;				// do not test with light avatar
-				Intersection p_light_inter;
-
-				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance && !p_light_inter.obj->isLight) {
-					res = res * (1 - p_light_inter.mtlcolor.alpha);
+				if (i->mtlcolor.hasEmission()) continue; // do not test with light avatar
+				
+				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance ) {
+					return true;
 				}
 			}
+			return false;
 		}
-		else {	// use BVH, note: only call this line under soft shadow && EXPEDITE (in WhittedRT)
-			if (hasIntersection(g->scene.BVHaccelerator->getNode(), orig, raydir, distance))
-				return 0;
-			return 1;
+		else { // BVH intersection test
+			return hasIntersection(g->scene.BVHaccelerator->getNode(), orig, raydir, distance);
+
 		}
-		return res;
 	}
 
 
@@ -520,7 +516,7 @@ public:
 
 
 
-// helper function for multithreads rendering
+// used in multithreads rendering
 // each thread call this funciton
 void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 

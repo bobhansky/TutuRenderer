@@ -141,7 +141,7 @@ private:
 
 
 
-// get the Intersection with ginven BVNode, and ray info
+// get the Intersection with ginven BVHnode, and ray info
 Intersection getIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& rayDir) {
 	Intersection inter;
 	if (!node) return inter;
@@ -166,7 +166,7 @@ Intersection getIntersection(BVHNode* node, const Vector3f& rayOrig, const Vecto
 	return rinter;
 }
 
-// test if there's a intesection, used for shadow coefficient
+// test if there's a intesection with non-emissive obj, used for shadow ray
 bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& rayDir, float dis) {
 	if (!node) return false;
 	
@@ -176,7 +176,7 @@ bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& ray
 	if (!node->left && !node->right) {
 		Intersection inter;
 		node->obj->intersect(rayOrig, rayDir, inter);
-		if (inter.obj->isLight || inter.mtlcolor.hasEmission()) return false;	// do not count for light 
+		if (inter.mtlcolor.hasEmission()) return false;	// do not test with light 
 
 		if (inter.intersected && inter.t < dis)
 			return true;
@@ -184,12 +184,9 @@ bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& ray
 	}
 
 	// if node is a internal node
-	// then return the nearest intersection 
-	Intersection linter = getIntersection(node->left, rayOrig, rayDir);
-	if (linter.intersected && linter.t < dis && !linter.obj->mtlcolor.hasEmission()) return true;
-	Intersection rinter = getIntersection(node->right, rayOrig, rayDir);
-	if (rinter.intersected && rinter.t < dis && !rinter.obj->mtlcolor.hasEmission()) return true;
+	bool l = hasIntersection(node->left, rayOrig, rayDir, dis);
+	bool r = hasIntersection(node->right, rayOrig, rayDir, dis);
 
-	return false;
+	return l||r;
 }
 

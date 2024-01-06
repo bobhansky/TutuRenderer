@@ -12,4 +12,6 @@ public:
 
 	// calculate shadow coefficient, for hard shadow
 	virtual float getShadowCoeffi(Scene& sce, Intersection& p, Vector3f& lightpos) = 0;
+
+
 };

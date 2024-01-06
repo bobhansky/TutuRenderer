@@ -33,7 +33,7 @@ class BVHStrategy : public IIntersectStrategy {
 		// in this project, leaf box always contain only 1 object
 		if (!node->left && !node->right) {
 			node->obj->intersect(rayOrig, rayDir, inter);
-			if (inter.intersected && inter.t < dis && !inter.obj->isLight)
+			if (inter.intersected && inter.t < dis)
 				return (1-inter.mtlcolor.alpha);
 			return 1;
 		}
@@ -42,7 +42,8 @@ class BVHStrategy : public IIntersectStrategy {
 		float l = ShadowHelper(node->left, rayOrig, rayDir, dis);
 		float r = ShadowHelper(node->right, rayOrig, rayDir, dis);
 
-
 		return l * r;
 	}
+
+
 };
