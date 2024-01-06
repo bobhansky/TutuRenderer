@@ -25,7 +25,7 @@
 
 #define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 512;
+int SPP = 16;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 

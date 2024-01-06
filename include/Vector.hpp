@@ -130,6 +130,10 @@ public:
 		return sqrtf(x * x + y * y + z * z);
 	}
 
+	float norm2() {
+		return x * x + y * y + z * z;
+	}
+
 };
 
 // return the normalized version of vector v
