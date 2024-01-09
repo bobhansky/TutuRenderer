@@ -25,7 +25,7 @@
 
 #define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 8;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -309,7 +309,7 @@ public:
 			// BRDF has reciprocity
 			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir);
 
-			// in case that pdf is too samll and generate white img
+			// in case that pdf is too small and generate white img
 			if (pdf == 0.f) return { 0,0,0 };
 
 			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
@@ -516,8 +516,13 @@ public:
 
 
 
-// used in multithreads rendering
-// each thread call this funciton
+/// <summary>
+/// used in multithreads rendering. each thread call this funciton
+/// </summary>
+/// <param name="arg"></param>
+/// <param name="threadID"></param>
+/// <param name="s">start row</param>
+/// <param name="e">end row exclusive</param>
 void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 
 	const Vector3f ul = *arg->ul;

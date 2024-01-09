@@ -155,12 +155,12 @@ public:
 				
 			break;
 		}
-		case SPECULAR_REFLECTIVE:
+		case SPECULAR_REFLECTIVE: {
 			break;
+		}
+
 		default:
 			break;
 		}
 	}
-
-
 };
