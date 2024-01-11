@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <string>
 #include <float.h>
 #include <stdexcept>
@@ -12,6 +12,7 @@
 
 
 #define M_PI 3.1415926535897
+#define EPSILON 0.005f		// be picky about it, change it to accommodate object size
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);
 // x is the portion
@@ -194,7 +195,7 @@ float fresnel(const Vector3f& Incident, const Vector3f& normal, const float eta_
 	
 	// The Schlick approximation defines the Fresnel
 	// reflectance coefficient using the function :
-	// Fr = F0 + (1–F0 )(1–cos(theta_i))^5
+	// Fr = F0 + (1â€“F0 )(1â€“cos(theta_i))^5
 
 	// Schlick approximation: a faster approach to define F0
 	float F0 = powf(((eta_t - eta_i) / (eta_t + eta_i)), 2.f);	
@@ -246,4 +247,41 @@ Vector3f getRefractionDir(const Vector3f& incident, const Vector3f& normal, floa
 	return cos_theta_t * (-N) + eta_i / eta_t * (cos_theta_i * N - I);
 }
 
+/// <summary>
+/// Normal Distribution Function
+/// isotropic GGX
+/// </summary>
+/// <param name="h">: half vector, also the micro normal m </param>
+/// <param name="n">: macrosurface normal  </param>
+/// <param name="roughness">: width parameter alpha_g </param>
+/// <returns>return the area of microfacet with micro normal h in dA</returns>
+float D_ndf(Vector3f& h, Vector3f& n, float roughness) {
+	float cos_nh_2 = (n.dot(h)) * (n.dot(h));
+	float sin_nh_2 = 1 - cos_nh_2;
+	float denominator = 1 / (M_PI * powf(roughness * roughness * cos_nh_2 + sin_nh_2, 2));
 
+	return roughness * roughness * denominator;
+}
+
+/// <summary>
+/// shadow masking function
+/// </summary>
+/// <param name="wi">: incident solid angle</param>
+/// <param name="wo">: observing/out solid angle</param>
+/// <param name="n">: normal</param>
+/// <param name="roughness">: width parameter alpha_g </param>
+/// <returns> the fraction of unblocked part, [0,1]</returns>
+float G_smf(Vector3f& wi, Vector3f& wo, Vector3f& n, float roughness) {
+	float angle_wi_n = acosf(wi.dot(n));
+	float angle_wo_n = acosf(wo.dot(n));
+	// in paper   Microfacet Models for Refraction through Rough Surface
+	float G1_wi = 2 / (1 + sqrtf(1 + roughness * roughness * powf(tanf(angle_wi_n), 2)));
+	float G1_wo = 2 / (1 + sqrtf(1 + roughness * roughness * powf(tanf(angle_wo_n), 2)));
+	return clamp(0.f, 1.f, G1_wi * G1_wo);
+
+	
+	// a better G  according to https://zhuanlan.zhihu.com/p/434964126
+	//float Ai = (-1 + sqrtf(1 + roughness * roughness * powf(tanf(angle_wi_n), 2))) * 0.5;
+	//float Ao = (-1 + sqrtf(1 + roughness * roughness * powf(tanf(angle_wo_n), 2))) * 0.5;
+	//return 1 / (1 + Ai + Ao);
+}
