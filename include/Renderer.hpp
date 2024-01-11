@@ -22,10 +22,8 @@
 #include "BaseInterStrategy.hpp"
 
 
-
-#define EPSILON 0.005f		// be picky about it
 bool PRINT = false;			// debug helper
-int SPP = 8;
+int SPP = 128;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -171,8 +169,8 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				//if (x == 429 && y == 168)
-				//	PRINT = true;
+				if (x == 523 && y == 728)
+					PRINT = true;
 
 				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
@@ -272,12 +270,20 @@ public:
 			Vector3f light_N = normalized(light_inter.nDir);
 			Vector3f p_to_light = normalized(light_inter.pos - inter.pos);
 			float cos_theta_prime = light_N.dot(-p_to_light);
-			float dis2 = (light_inter.pos - inter.pos).dot(light_inter.pos - inter.pos);
-			float cos_theta = p_to_light.dot(inter.nDir);
-			Vector3f wo = -dir;
-			Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir);
+			// if light does not illuminate this direction (p_to_light is on the back side of the light)
+			if (cos_theta_prime < 0) {
 
-			dir_illu = L_i * f_r * cos_theta * cos_theta_prime / dis2 / light_pdf;
+			}
+			else {
+				float dis2 = (light_inter.pos - inter.pos).dot(light_inter.pos - inter.pos);
+				float cos_theta = p_to_light.dot(inter.nDir);
+				Vector3f wo = -dir;
+				Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
+
+				dir_illu = L_i * f_r * cos_theta * cos_theta_prime / dis2 / light_pdf;
+				int a = 1;
+			}
+
 		}
 
 		// clamp in case that dir_illu is a verysmall negative number
@@ -298,7 +304,7 @@ public:
 		p_to_x_dir = normalized(p_to_x_dir);
 		
 		Intersection x_inter;
-		Vector3f rayOrig = inter.pos + inter.nDir * 0.0005f;
+		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene,rayOrig , p_to_x_dir);
 		// calculate only when inter is on a non-emissive object
 		if (x_inter.intersected && !x_inter.mtlcolor.hasEmission()) {
@@ -307,7 +313,7 @@ public:
 			Vector3f wo = -dir;
 			float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
 			// BRDF has reciprocity
-			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir);
+			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
 
 			// in case that pdf is too small and generate white img
 			if (pdf == 0.f) return { 0,0,0 };
@@ -401,10 +407,9 @@ public:
 	/// <returns>if the ray is blocked by non-emissive obj, return true</returns>
 	bool isShadowRayBlocked(Intersection& p, Vector3f& lightPos) {
 		Vector3f orig = p.pos;
-		orig = orig + 0.0005f * p.nDir;
+		orig = orig + EPSILON * p.nDir;
 		Vector3f raydir = normalized(lightPos - orig);
 		float distance = (lightPos - orig).norm();
-
 
 		if (!EXPEDITE) {
 			Intersection p_light_inter;
@@ -419,7 +424,6 @@ public:
 		}
 		else { // BVH intersection test
 			return hasIntersection(g->scene.BVHaccelerator->getNode(), orig, raydir, distance);
-
 		}
 	}
 

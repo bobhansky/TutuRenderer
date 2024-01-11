@@ -64,6 +64,17 @@ int main(int argc, char* argv[]) {
 	lightmtl.eta = 1.52;
 	lightmtl.emission = Vector3f(47.8348f, 38.5664f, 31.0808f);
 
+	Material metalmtl;
+	metalmtl.mType = MICROFACET;
+	metalmtl.diffuse = Vector3f(0.725f, 0.71f, 0.68f);
+	metalmtl.ka = 1;
+	metalmtl.kd = 0.4;
+	metalmtl.ks = 0;
+	metalmtl.n = 64;
+	metalmtl.alpha = 1;
+	metalmtl.eta = 12.5;
+	metalmtl.roughness = 0.1;
+
 
 	objl::Loader floor;
 	if (floor.LoadFile("./model/floor.obj"))
@@ -71,11 +82,11 @@ int main(int argc, char* argv[]) {
 
 	objl::Loader shortBox;
 	if (shortBox.LoadFile("./model/shortbox.obj"))
-		g.loadObj(shortBox, whitemtl, -1, -1);
+		g.loadObj(shortBox, metalmtl, -1, -1);
 
 	objl::Loader tallbox;
 	if (tallbox.LoadFile("./model/tallbox.obj"))
-		g.loadObj(tallbox, whitemtl, -1, -1);
+		g.loadObj(tallbox, metalmtl, -1, -1);
 
 	objl::Loader left;
 	if (left.LoadFile("./model/left.obj"))

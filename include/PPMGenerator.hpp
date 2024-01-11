@@ -488,6 +488,27 @@ public:
 			isTextureOn = false;		// do not use texture data as Object diffuse term
 		}
 
+		else if (key.compare("MICROFACET") == 0) {
+			// MICROFACET Odr Odg Odb alpha eta roughness 
+			std::string t0, t1, t2, t3, t4, t5;
+
+			checkFin(); fin >> t0; checkFin(); fin >> t1; checkFin(); fin >> t2;
+			checkFin(); fin >> t3; checkFin(); fin >> t4; checkFin(); fin >> t5;
+
+			checkFloat(t0); checkFloat(t1); checkFloat(t2); checkFloat(t3);
+			checkFloat(t4); checkFloat(t5);
+
+
+			mtlcolor.mType = MICROFACET;
+			mtlcolor.diffuse.x = std::stof(t0);
+			mtlcolor.diffuse.y = std::stof(t1);
+			mtlcolor.diffuse.z = std::stof(t2);
+			mtlcolor.alpha = std::stof(t3);
+			mtlcolor.eta = std::stof(t4);
+			mtlcolor.roughness = std::stof(t5);
+		}
+
+
 		// read shadow config
 		else if (key.compare("shadow") == 0) {
 			checkFin(); fin >> a;

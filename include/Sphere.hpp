@@ -36,7 +36,6 @@ public:
 
 		inter.intersected = false;
 
-
 		// miss, no real solution
 		if (FLOAT_EQUAL(t1, FLT_MAX) && FLOAT_EQUAL(t2, FLT_MAX)) {
 			return false;

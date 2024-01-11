@@ -7,23 +7,26 @@
 
 enum MaterialType {
 	LAMBERTIAN,
-	SPECULAR_REFLECTIVE
+	SPECULAR_REFLECTIVE,
+	MICROFACET	// Cook Torrance  with GGX
 };
 
 
 class Material {
 public:
-	Vector3f diffuse;
-	Vector3f specular;
+	Vector3f diffuse =  Vector3f(0.725f, 0.71f, 0.68f);
+	Vector3f specular = Vector3f(1.f);
 	Vector3f emission = Vector3f(0.f);
 	MaterialType mType = LAMBERTIAN;
-	float ka = 0;;
+	float ka = 0;
 	float kd = 0;
 	float ks = 0;			// if ks = 0, then the material is non-reflective
 	float n = 0;			// highlights shininess power coefficient
 
-	float alpha = 1;			// opacity		if alpha = 1. then no refraction 
-	float eta = 1;				// index of refraction
+	float alpha = 1;		// opacity		if alpha = 1. then no refraction 
+	float eta = 1;			// index of refraction
+
+	float roughness = 1;	// width parameter  alpha_g
 
 
 	// copy assignment operator
@@ -45,6 +48,8 @@ public:
 
 			this->alpha = other.alpha;
 			this->eta = other.eta;
+
+			this->roughness = other.roughness;
 		}
 		return *this;
 	}
@@ -54,7 +59,7 @@ public:
 	}
 
 	// BxDF, return vec3f of elements within [0,1] 
-	Vector3f BxDF(Vector3f& wi, Vector3f& wo, Vector3f& N) {
+	Vector3f BxDF(Vector3f& wi, Vector3f& wo, Vector3f& N, float eta_scene) {
 		switch (mType) {
 			case LAMBERTIAN: {
 				float cos_theta =wo.dot(N);
@@ -65,6 +70,31 @@ public:
 				else return Vector3f(0.f);
 				break;
 			}
+			
+			case MICROFACET: {
+				// Cook-Torrance Model
+				
+				// 1/11/2024
+				// need to check N dot wi to see if the incident light is inside obj or outside
+				// only for indirect illumination
+				
+				
+				// ************** Reflection erm ********************
+				Vector3f h = normalized(wi + wo);
+				float F = fresnel(-wi, h, eta, eta_scene);
+				float D = D_ndf(h, N, roughness);
+				float G = G_smf(wi, wo, N, roughness);
+				float fr = (F * G * D) / ((4 * wi.dot(N)) * wo.dot(N));
+				fr = clamp(0.f, 1.f, fr);		// adding it results in vertical banding
+				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
+				Vector3f ref_term =  fr * specular;	 // IMPORTANT: fr * specular color
+				return diffuse_term + ref_term;
+
+				//************** Reflection term ends ********************
+			}
+			
+			default:
+				return Vector3f(0.f);
 		}
 	}
 
@@ -74,6 +104,8 @@ public:
 	Vector3f sampleDirection(Vector3f& pos, Vector3f& N) {
 		switch (mType)
 		{
+		case MICROFACET:
+
 		case LAMBERTIAN: {
 			// **** inverse transformation sampling
 			// pbrt 13.6.1  *important
@@ -100,14 +132,14 @@ public:
 			dir = normalized(dir);
 			
 			return SphereLocal2world(N, dir);
-
-			
 			break;
 		}
+
+
+
 		case SPECULAR_REFLECTIVE: {
 			return 0;
 			break;
-
 		}
 		default: {
 			return Vector3f(0.f);
@@ -144,22 +176,23 @@ public:
 	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
 		switch (mType)
 		{
-		case LAMBERTIAN: {
+		case LAMBERTIAN: 
+		case MICROFACET: {
 			// uniform sample probability 1 / (2 * PI)
 			if (wo.dot(N) > 0.0f)
 				return 0.5f / M_PI;
 			else
-			{
 				return 0.0f;
-			}
-				
+
 			break;
 		}
 		case SPECULAR_REFLECTIVE: {
+			return 1;
 			break;
 		}
 
 		default:
+			return 1;
 			break;
 		}
 	}
