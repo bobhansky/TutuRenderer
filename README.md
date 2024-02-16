@@ -38,9 +38,9 @@ right: Path Tracing
 
 ----------------------------
 ### others  
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/1024_corrected.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/1600.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/wall.png)  
-
-------------------------------------------
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/256_wall.png)
 
 
