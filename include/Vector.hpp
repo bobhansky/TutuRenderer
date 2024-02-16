@@ -113,6 +113,14 @@ public:
 
 		return *this;
 	}
+	
+	Vector3f& operator= (const float& scaler) {
+		this->x = scaler;
+		this->y = scaler;
+		this->z = scaler;
+
+		return *this;
+	}
 
 	// dot product
 	float dot(const Vector3f& v) const {

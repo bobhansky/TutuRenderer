@@ -8,7 +8,8 @@
 enum MaterialType {
 	LAMBERTIAN,
 	SPECULAR_REFLECTIVE,
-	MICROFACET	// Cook Torrance  with GGX
+	MICROFACET,	// Cook Torrance Microfacet model  with GGX dist
+	UNLIT
 };
 
 

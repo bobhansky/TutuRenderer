@@ -23,7 +23,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 128;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -32,6 +32,7 @@ float Russian_Roulette = 0.78f;
 // 12/23/2023  when it's 3 sometimes error happen in debug mode
 // exited with code -1073741819. (first time compiling will most likely result in this)
 #define N_THREAD 20 
+//#define GAMMA_COORECTION 
 
 
 // thread argument
@@ -169,7 +170,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 523 && y == 728)
+				if (x == 852 && y == 123)
 					PRINT = true;
 
 				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
@@ -195,14 +196,18 @@ public:
 				}
 				res = res * SPP_inv;
 
+#ifdef GAMMA_COORECTION
 				// gamma correction
 				color.x = 255 * pow(clamp(0, 1, res.x), 0.6f);
 				color.y = 255 * pow(clamp(0, 1, res.y), 0.6f);
 				color.z = 255 * pow(clamp(0, 1, res.z), 0.6f);
-				// without
-				//color.x = 255 * clamp(0, 1, res.x);
-				//color.y = 255 * clamp(0, 1, res.y);
-				//color.z = 255 * clamp(0, 1, res.z);
+#endif
+
+#ifndef GAMMA_COORECTION
+				color.x = 255 * clamp(0, 1, res.x);
+				color.y = 255 * clamp(0, 1, res.y);
+				color.z = 255 * clamp(0, 1, res.z);
+#endif // !GAMMA_COORECTION
 			}
 
 			showProgress((float)y / g->height);
@@ -234,6 +239,7 @@ public:
 		// if ray hit emissive object, return the L_o
 		if (inter.mtlcolor.hasEmission())	return inter.mtlcolor.emission;
 
+
 		
 		// **************** TEXUTRE ********************
 		// if diffuse texture is activated, change mtlcolor.diffuse to texture data
@@ -253,6 +259,8 @@ public:
 		}
 		// **************** TEXUTRE ENDS ****************
 		
+		// if UNLIT material, return diffuse
+		if (inter.mtlcolor.mType == UNLIT) return inter.mtlcolor.diffuse;
 
 		Vector3f dir_illu(0.f);
 		Vector3f indir_illu(0.f);
@@ -262,35 +270,35 @@ public:
 		float light_pdf;
 		Intersection light_inter;
 		sampleLight(light_inter, light_pdf);
-		
-		// test if the ray is blocked in the middle 
-		if (isShadowRayBlocked(inter, light_inter.pos)) {}
-		else {	// ray is not blocked, then calculate the direct illumination
-			Vector3f L_i = light_inter.mtlcolor.emission;
-			Vector3f light_N = normalized(light_inter.nDir);
-			Vector3f p_to_light = normalized(light_inter.pos - inter.pos);
-			float cos_theta_prime = light_N.dot(-p_to_light);
-			// if light does not illuminate this direction (p_to_light is on the back side of the light)
-			if (cos_theta_prime < 0) {
-
-			}
-			else {
-				float dis2 = (light_inter.pos - inter.pos).dot(light_inter.pos - inter.pos);
-				float cos_theta = p_to_light.dot(inter.nDir);
-				Vector3f wo = -dir;
-				Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
-
-				dir_illu = L_i * f_r * cos_theta * cos_theta_prime / dis2 / light_pdf;
-				int a = 1;
-			}
+		if (!light_inter.intersected) {
 
 		}
+		else {
+			// test if the ray is blocked in the middle 
+			if (isShadowRayBlocked(inter, light_inter.pos)) {}
+			else {	// ray is not blocked, then calculate the direct illumination
+				Vector3f L_i = light_inter.mtlcolor.emission;
+				Vector3f light_N = normalized(light_inter.nDir);
+				Vector3f p_to_light = normalized(light_inter.pos - inter.pos);
+				float cos_theta_prime = light_N.dot(-p_to_light);
+				// if light does not illuminate this direction (p_to_light is on the back side of the light)
+				if (cos_theta_prime < 0) {
+				}
+				else {
+					float dis2 = (light_inter.pos - inter.pos).dot(light_inter.pos - inter.pos);
+					float cos_theta = p_to_light.dot(inter.nDir);
+					Vector3f wo = -dir;
+					Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
 
-		// clamp in case that dir_illu is a verysmall negative number
-		dir_illu.x = clamp(0, 1, dir_illu.x);
-		dir_illu.y = clamp(0, 1, dir_illu.y);
-		dir_illu.z = clamp(0, 1, dir_illu.z);
-
+					dir_illu = L_i * f_r * cos_theta * cos_theta_prime / dis2 / light_pdf;
+					int a = 1;
+				}
+			}
+			// clamp in case that dir_illu is a verysmall negative number
+			dir_illu.x = clamp(0, 1, dir_illu.x);
+			dir_illu.y = clamp(0, 1, dir_illu.y);
+			dir_illu.z = clamp(0, 1, dir_illu.z);
+		}
 
 		// ****** Indirect Illumination
 		
@@ -495,20 +503,29 @@ public:
 	void sampleLight(Intersection& inter, float& pdf) {
 		static std::vector<Object*> lightList;
 		static float totalArea = 0;
+		static bool firstimeCall = true;
 		int size = lightList.size();
 		
 		// if first time call it, put all the emissive object into lightList
-		if (size == 0) {
+		if (firstimeCall) {
 			for (auto& i : g->scene.objList) {
 				if (i->mtlcolor.hasEmission()) {
 					lightList.emplace_back(i.get());
 					totalArea += i->getArea();
 				}
 			}
+			firstimeCall = false;
 		}
 
 		size = lightList.size();
-		int index = (int)(getRandomFloat() * (size - 1) + 0.5f);
+		// if there's no light
+		if (size == 0) {
+			inter.intersected = false;
+			return;
+		}
+		
+		int index = (int)(getRandomFloat() * (size - 1) + 0.4999f);
+		if (size == 1) index = 0;
 		
 		Object* lightObject = lightList.at(index);
 
@@ -553,15 +570,20 @@ void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 				res = res + r->traceRay(eyePos, rayDir, 0);
 			}
 			res = res * SPP_inv;
+#ifdef GAMMA_COORECTION
 			// gamma correction
 			color.x = 255 * pow(clamp(0, 1, res.x), 0.6f);
 			color.y = 255 * pow(clamp(0, 1, res.y), 0.6f);
 			color.z = 255 * pow(clamp(0, 1, res.z), 0.6f);
+#endif
 
-			// without
-			//color.x = 255 * clamp(0, 1, res.x);
-			//color.y = 255 * clamp(0, 1, res.y);
-			//color.z = 255 * clamp(0, 1, res.z);
+#ifndef GAMMA_COORECTION
+			color.x = 255 * clamp(0, 1, res.x);
+			color.y = 255 * clamp(0, 1, res.y);
+			color.z = 255 * clamp(0, 1, res.z);
+#endif // !GAMMA_COORECTION
+
+
 		}
 		//showProgress((float)y / e);		// comment it out for a clean terminal
 	}
