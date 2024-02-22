@@ -22,6 +22,7 @@ public:
 	int textureIndex = -1;
 	int normalMapIndex = -1;
 
+
 	Material mtlcolor;
 	Object *obj = nullptr;		// this intersection is on which object	
 

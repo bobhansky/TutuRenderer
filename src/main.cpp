@@ -65,24 +65,25 @@ int main(int argc, char* argv[]) {
 	lightmtl.emission = Vector3f(47.8348f, 38.5664f, 31.0808f);
 
 	Material metalmtl;
-	metalmtl.mType = MICROFACET;
-	metalmtl.diffuse = Vector3f(0.725f, 0.71f, 0.68f);
+	metalmtl.mType = SPECULAR_REFLECTIVE;
+	metalmtl.diffuse = Vector3f(0.913f, 0.921f, 0.925f);
 	metalmtl.ka = 1;
 	metalmtl.kd = 0.4;
 	metalmtl.ks = 0;
 	metalmtl.n = 64;
 	metalmtl.alpha = 1;
 	metalmtl.eta = 12.5;
-	metalmtl.roughness = 0.1;
+	metalmtl.roughness = 0.05;
+	metalmtl.metallic = 1;
 
 
 	objl::Loader floor;
 	if (floor.LoadFile("./model/floor.obj"))
 		g.loadObj(floor, whitemtl, -1, -1);
 
-	objl::Loader shortBox;
-	if (shortBox.LoadFile("./model/shortbox.obj"))
-		g.loadObj(shortBox, metalmtl, -1, -1);
+	//objl::Loader shortBox;
+	//if (shortBox.LoadFile("./model/shortbox.obj"))
+	//	g.loadObj(shortBox, metalmtl, -1, -1);
 
 	objl::Loader tallbox;
 	if (tallbox.LoadFile("./model/tallbox.obj"))
@@ -111,6 +112,8 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "output to img...\n";
 	g.generate();
+	
+
 
 	return 0;
 

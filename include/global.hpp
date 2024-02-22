@@ -17,13 +17,31 @@
 // lerp(x,v0,v1) = v0 + x(v1-v0);
 // x is the portion
 // v0 v1 are the values
-float lerp(float x, float v0, float v1) {
+float lerp(float v0, float v1, float x) {
 	return v0 + x * (v1 - v0);
+}
+
+Vector3f lerp(Vector3f& v0, Vector3f& v1, float x) {
+	Vector3f res;
+	res.x = v0.x + x * (v1.x - v0.x);
+	res.y = v0.y + x * (v1.y - v0.y);
+	res.z = v0.z + x * (v1.z - v0.z);
+
+	return res;
 }
 
 inline float clamp(const float& lo, const float& hi, const float& v)
 {
 	return std::max(lo, std::min(hi, v));
+}
+
+inline Vector3f clamp(const Vector3f& lo, const Vector3f& hi, Vector3f& v)
+{
+	Vector3f res;
+	res.x = clamp(lo.x, hi.x, v.x);
+	res.y = clamp(lo.y, hi.y, v.y);
+	res.z = clamp(lo.z, hi.z, v.z);
+	return res;
 }
 
 
@@ -180,6 +198,14 @@ Vector2f getEleIn(std::vector<Vector2f>& arr, int index) {
 	return arr.at(index);
 }
 
+// Schlick approximation used for microfacet model
+// https://learnopengl.com/PBR/Theory:
+// For conductor surfaces (metals), calculating the base reflectivity with indices of refraction doesn't properly hold 
+// and we need to use a different Fresnel equation for conductors altogether. 
+Vector3f fresnelSchlick(float cosTheta, const Vector3f& F0)
+{
+	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 // fresnel, get the specular reflection fraction 
 float fresnel(const Vector3f& Incident, const Vector3f& normal, const float eta_i, const float eta_t) {
@@ -258,6 +284,7 @@ Vector3f getRefractionDir(const Vector3f& incident, const Vector3f& normal, floa
 float D_ndf(Vector3f& h, Vector3f& n, float roughness) {
 	float alpha = roughness * roughness;
 	float cos_nh_2 = (n.dot(h)) * (n.dot(h));
+	cos_nh_2 = std::max(cos_nh_2, 0.f);
 	float sin_nh_2 = 1 - cos_nh_2;
 	float denominator = 1 / (M_PI * powf(alpha* alpha * cos_nh_2 + sin_nh_2, 2));
 
@@ -286,4 +313,24 @@ float G_smf(Vector3f& wi, Vector3f& wo, Vector3f& n, float roughness) {
 	//float Ai = (-1 + sqrtf(1 + roughness * roughness * powf(tanf(angle_wi_n), 2))) * 0.5;
 	//float Ao = (-1 + sqrtf(1 + roughness * roughness * powf(tanf(angle_wo_n), 2))) * 0.5;
 	//return 1 / (1 + Ai + Ao);
+}
+
+// from https://learnopengl.com/PBR/Theory
+float GeometrySchlickGGX(float NdotV, float k)
+{
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+	
+    return nom / denom;
+}
+
+// V 
+float GeometrySmith(Vector3f& N, Vector3f& wi, Vector3f& wo, float k)
+{
+	float NdotV = std::max(N.dot(wo), 0.0f);
+	float NdotL = std::max(N.dot(wi), 0.0f);
+	float ggx1 = GeometrySchlickGGX(NdotV, k);
+	float ggx2 = GeometrySchlickGGX(NdotL, k);
+
+	return ggx1 * ggx2;
 }
