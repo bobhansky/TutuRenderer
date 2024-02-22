@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "global.hpp"
 #include "Vector.hpp"
@@ -28,6 +28,7 @@ public:
 	float eta = 1;			// index of refraction
 
 	float roughness = 1;	// width parameter  alpha_g
+	float metallic = 0;
 
 
 	// copy assignment operator
@@ -51,6 +52,7 @@ public:
 			this->eta = other.eta;
 
 			this->roughness = other.roughness;
+			this->metallic = other.metallic;
 		}
 		return *this;
 	}
@@ -60,7 +62,10 @@ public:
 	}
 
 	// BxDF, return vec3f of elements within [0,1] 
-	Vector3f BxDF(Vector3f& wi, Vector3f& wo, Vector3f& N, float eta_scene) {
+	// wi, wo: origin at inter.pos center, pointing outward
+	// wi: Light direction
+	// wo: view dir
+	Vector3f BxDF( Vector3f& wi,  Vector3f& wo, Vector3f& N, float eta_scene) {
 		switch (mType) {
 			case LAMBERTIAN: {
 				float cos_theta =wo.dot(N);
@@ -79,19 +84,31 @@ public:
 				// need to check N dot wi to see if the incident light is inside obj or outside
 				// only for indirect illumination
 				
-				
 				// ************** Reflection erm ********************
 				Vector3f h = normalized(wi + wo);
-				float F = fresnel(-wi, h, eta, eta_scene);
-				float D = D_ndf(h, N, roughness);
-				float G = G_smf(wi, wo, N, roughness);
-				float fr = (F * G * D) / ((4 * wi.dot(N)) * wo.dot(N));
-				fr = clamp(0.f, 1.f, fr);		// adding it results in vertical banding
-				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
-				Vector3f ref_term =  fr * specular;	 // IMPORTANT: fr * specular color
-				return diffuse_term + ref_term;
+				float costheta = h.dot(wo);
 
+				Vector3f F0(0.04f);	// should be 0.04			
+				F0 = lerp(F0, this->diffuse, this->metallic);
+				Vector3f F = fresnelSchlick(costheta, F0);	// learnopgl
+				// float F = fresnel(-wi, h, eta_scene, this->eta);
+				float D = D_ndf(h, N, roughness);
+				//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
+				float G = G_smf(wi, wo, N, roughness);
+				Vector3f fr = (F * G * D) / ((4 * wi.dot(N)) * wo.dot(N));	// originaly float fr
+
+				fr = clamp(0, 1, fr);	
+				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
+				Vector3f ref_term =  fr * specular;		// or 1
+				return diffuse_term + ref_term;
+				
 				//************** Reflection term ends ********************
+			}
+
+			case SPECULAR_REFLECTIVE:
+			{
+				return 1;
+				break;
 			}
 			
 			default:
@@ -102,10 +119,25 @@ public:
 
 
 	// sample a direction on the hemisphere
-	Vector3f sampleDirection(Vector3f& pos, Vector3f& N) {
+	// wi: incident dir, pointing outward
+	Vector3f sampleDirection(const Vector3f& wi, const Vector3f& N) {
 		switch (mType)
 		{
-		case MICROFACET:
+		case MICROFACET: 
+		{
+			// https://zhuanlan.zhihu.com/p/78146875
+			// https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
+
+			float r0 = getRandomFloat();
+			float r1 = getRandomFloat();
+			float a2 = roughness * roughness * roughness * roughness;
+			float phi = 2 * M_PI * r1;
+			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
+
+			float r = std::sin(theta);
+			return getReflectionDir(-wi, SphereLocal2world(N, Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta))));
+			break;
+		}
 
 		case LAMBERTIAN: {
 			// **** inverse transformation sampling
@@ -125,7 +157,7 @@ public:
 			float phi = 2 * M_PI * r2;
 
 			Vector3f dir;
-			float sinTheta = std::max(0.f, sqrtf(1- pow(r1,2)));
+			float sinTheta = sqrtf(std::max(0.f, 1.f - powf(r1,2)));
 			dir.x = cos(phi) * sinTheta;
 			dir.y = sin(phi) * sinTheta;
 			dir.z = cosTheta;
@@ -136,10 +168,8 @@ public:
 			break;
 		}
 
-
-
 		case SPECULAR_REFLECTIVE: {
-			return 0;
+			return getReflectionDir(-wi, N);
 			break;
 		}
 		default: {
@@ -151,39 +181,80 @@ public:
 	}
 
 	
-	Vector3f SphereLocal2world(Vector3f& N, Vector3f& dir) {
+	Vector3f SphereLocal2world(const Vector3f& n, const Vector3f& dir) {
 		// https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#generatingrandomdirections/uniformsamplingahemisphere
 		// 8. orthonormal basis
 		// change of basis 
 
 		// x y z local coordinates to s t n coordinates
-
 		Vector3f a;
-		N = normalized(N);	//z
-		
+		Vector3f N = normalized(n);	//z
 		// construct an Orthonalmal basis
 		// randomly choose an a that is not parallel to N
 		if (fabs(N.x) > 0.9f)
 			a = { 0.f, 1.f, 0.f };
 		else a = { 1.f, 0.f, 0.f };
-
-		Vector3f T = crossProduct(a, N); // y   X cross Y == Z      then S cross T should == N
-		Vector3f S = crossProduct(T, N); // x
+		//Vector3f T = crossProduct(a, N); // y   X cross Y == Z      then S cross T should == N
+		//Vector3f S = crossProduct(T, N); // x
+		// ******** 
+		// 2/21/2024 IMPORTANT
+		// 2 unit vectors cross product doens't guarantee to produce unit vec, unless they are orthogonal
+		// Vector3f S = crossProduct(N, a);		// reason for wrong result
+		Vector3f S = normalized(crossProduct(N, a)); 
+		Vector3f T = crossProduct(N, S); 
 		
 		return normalized(dir.x * S + dir.y * T + dir.z * N);
+		
+
+		// tangent and binormal??  2/21/2024 still could not understand
+		// https://tutorial.math.lamar.edu/classes/calcII/tangentnormalvectors.aspx
+		// https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+		// transform local normal (0,0,1) to world normal (N.x, N.y, N.z)
+		// nori: coordinateSystem
+		// https://github.com/wjakob/nori/blob/master/src/common.cpp
+		//Vector3f B, C;
+		//if (std::fabs(n.x) > std::fabs(n.y)) {
+		//	float invLen = 1.0f / std::sqrt(n.x * n.x + n.z * n.z);	
+		//	C = Vector3f(n.z * invLen, 0.0f, -n.x * invLen);
+		//	// n dot C:
+		//	// n.x * n.z/sqrt(n.x * n.x + n.z * n.z) + 
+		//	// 0 * n.y  +
+		//	// n.z * -n.x /sqrt(n.x * n.x + n.z * n.z) == 0
+		//	// C is on xz plane
+		//}
+		//else {
+		//	float invLen = 1.0f / std::sqrt(n.y * n.y + n.z * n.z);
+		//	C = Vector3f(0.0f, n.z * invLen, -n.y * invLen);
+		//}
+		//B = crossProduct(C, n);
+		//return dir.x * B + dir.y * C + dir.z * n;
+		
 	}
 
 
-	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
+	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) const {
 		switch (mType)
 		{
-		case LAMBERTIAN: 
-		case MICROFACET: {
+		case LAMBERTIAN: {
 			// uniform sample probability 1 / (2 * PI)
-			if (wo.dot(N) > 0.0f)
-				return 0.5f / M_PI;
+			if (wi.dot(N) > 0.0f)
+				return wi.dot(N) / M_PI;  // cosine weighted pdf https://ameye.dev/notes/sampling-the-hemisphere/
 			else
 				return 0.0f;
+
+			break;
+		}
+		case MICROFACET: {
+			//if (wo.dot(N) > 0.0f)
+			//	return 0.5 / M_PI;
+			Vector3f h = normalized(wo + wi);
+			float cosTheta = N.dot(h);
+			cosTheta = std::max(cosTheta, 0.f);
+			float a2 = roughness * roughness;
+			float exp = (a2 - 1) * cosTheta * cosTheta + 1;
+			float D = a2 / (M_PI * exp * exp);
+			float res = D * cosTheta / (4.f * wo.dot(h));
+			return res;
 
 			break;
 		}

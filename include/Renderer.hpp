@@ -23,7 +23,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 1;
+int SPP = 256;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -32,7 +32,7 @@ float Russian_Roulette = 0.78f;
 // 12/23/2023  when it's 3 sometimes error happen in debug mode
 // exited with code -1073741819. (first time compiling will most likely result in this)
 #define N_THREAD 20 
-//#define GAMMA_COORECTION 
+#define GAMMA_COORECTION 
 
 
 // thread argument
@@ -170,7 +170,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 852 && y == 123)
+				if (x == 465 && y == 751)
 					PRINT = true;
 
 				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
@@ -265,7 +265,9 @@ public:
 		Vector3f dir_illu(0.f);
 		Vector3f indir_illu(0.f);
 
-
+		if (inter.mtlcolor.mType == SPECULAR_REFLECTIVE)
+			return calcForMirror(origin, dir, inter);
+		
 		// ****** Direct illumination
 		float light_pdf;
 		Intersection light_inter;
@@ -291,7 +293,6 @@ public:
 					Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
 
 					dir_illu = L_i * f_r * cos_theta * cos_theta_prime / dis2 / light_pdf;
-					int a = 1;
 				}
 			}
 			// clamp in case that dir_illu is a verysmall negative number
@@ -307,7 +308,8 @@ public:
 			return dir_illu;
 		}
 
-		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(inter.pos, inter.nDir);
+		// inter point to another 
+		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
 
 		p_to_x_dir = normalized(p_to_x_dir);
 		
@@ -316,21 +318,22 @@ public:
 		interStrategy->UpdateInter(x_inter, g->scene,rayOrig , p_to_x_dir);
 		// calculate only when inter is on a non-emissive object
 		if (x_inter.intersected && !x_inter.mtlcolor.hasEmission()) {
-			float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
+			float cos_pnormal_xdir = std::max(0.f, inter.nDir.dot(p_to_x_dir));
 
 			Vector3f wo = -dir;
-			float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
+			float pdf = inter.mtlcolor.pdf(p_to_x_dir, wo, inter.nDir);
 			// BRDF has reciprocity
 			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
 
 			// in case that pdf is too small and generate white img
-			if (pdf == 0.f) return { 0,0,0 };
+			if (pdf == 0.f) return 0;
+			if (pdf > 1) pdf = 1;
 
 			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
 			indir_illu = res * f_r * cos_pnormal_xdir / pdf / Russian_Roulette;
 		}
-		
-		return dir_illu + indir_illu;
+		Vector3f ret = dir_illu + indir_illu;
+		return clamp(Vector3f(0), Vector3f(1), ret);
 		
 		/*
 		// ****** calculate reflection and transmittance contribution
@@ -533,6 +536,33 @@ public:
 		// independent event p(a&&b) == p(a) *  p(b)
 		pdf = pdf * lightObject->getArea() / totalArea;
 	}
+
+	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir,  Intersection& inter) {
+		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
+
+		p_to_x_dir = normalized(p_to_x_dir);
+
+		Intersection x_inter;
+		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
+		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
+		// calculate only when inter is on a non-emissive object
+		if (x_inter.intersected ) {
+			float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
+
+			Vector3f wo = -dir;
+			float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
+			// BRDF has reciprocity
+			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
+
+			// in case that pdf is too small and generate white img
+			if (pdf == 0.f) return { 0,0,0 };
+
+			Vector3f res = traceRay(rayOrig, p_to_x_dir,-1);
+			return res * f_r * cos_pnormal_xdir / pdf ;
+		}
+
+		return 0;
+	}
 };
 
 
@@ -589,6 +619,8 @@ void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 	}
 	
 }
+
+
 
 
 

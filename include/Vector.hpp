@@ -76,6 +76,10 @@ public:
 		z = i;
 	}
 
+	void print() {
+		std::cout << "x: " << x << ", y: " << y << ", z: " << z << std::endl;
+	}
+
 	// ************************* vector operations *************************
 	
 	// const float&		const lvalue reference, can point to both lvalue and rvalue
@@ -129,6 +133,10 @@ public:
 
 	friend Vector3f operator*(float c, const Vector3f& v) {
 		return Vector3f(v.x * c, v.y * c, v.z * c);
+	}
+
+	friend Vector3f operator-(float c, const Vector3f& v) {
+		return Vector3f(c - v.x, c - v.y, c - v.z);
 	}
 
 	// ************************* vector operations ends ***********************
