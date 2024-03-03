@@ -169,6 +169,9 @@ Intersection getIntersection(BVHNode* node, const Vector3f& rayOrig, const Vecto
 // test if there's a intesection with non-emissive obj, used for shadow ray
 bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& rayDir, float dis) {
 	if (!node) return false;
+
+	if (!node->bound.IntersectRay(rayOrig, rayDir))
+		return false;
 	
 	// if the node is a leaf node
 	// then test the intersection of ray and objects
@@ -184,9 +187,9 @@ bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& ray
 	}
 
 	// if node is a internal node
-	bool l = hasIntersection(node->left, rayOrig, rayDir, dis);
-	bool r = hasIntersection(node->right, rayOrig, rayDir, dis);
+	if (hasIntersection(node->left, rayOrig, rayDir, dis))
+		return true;
 
-	return l||r;
+	return hasIntersection(node->right, rayOrig, rayDir, dis);
 }
 

@@ -8,6 +8,7 @@
 #include<cmath>
 #include<stack>
 #include<thread>
+#include<mutex>
 
 #include "Vector.hpp"
 #include "global.hpp"
@@ -23,7 +24,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 256;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -170,7 +171,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 465 && y == 751)
+				if (x == 1599 && y == 115)
 					PRINT = true;
 
 				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
@@ -221,25 +222,26 @@ public:
 public:
 	PPMGenerator* g;
 	IIntersectStrategy* interStrategy;
+	std::mutex sampleLight_mutex;
 	
 
 	// -dir is the wo, trace a ray into the scene and update intersection
 	// use Russian Roulette to terminate
 	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth) {
-
 		Intersection inter;
 		// loop through all the objects in the scene and find the nearest intersection
 		// const Class &: const lvalue reference
 		// test intersection
 		interStrategy->UpdateInter(inter, this->g->scene, origin, dir);
 
-
 		// if ray has no intersection, return bkgcolor
 		if (!inter.intersected)		return g->bkgcolor;
 		// if ray hit emissive object, return the L_o
-		if (inter.mtlcolor.hasEmission())	return inter.mtlcolor.emission;
-
-
+		if (inter.mtlcolor.hasEmission()) {
+			if(depth == 0)
+				return inter.mtlcolor.diffuse; //inter.mtlcolor.emission;
+			return inter.mtlcolor.emission;
+		}
 		
 		// **************** TEXUTRE ********************
 		// if diffuse texture is activated, change mtlcolor.diffuse to texture data
@@ -258,7 +260,8 @@ public:
 			changeNormalDir(inter);
 		}
 		// **************** TEXUTRE ENDS ****************
-		
+
+
 		// if UNLIT material, return diffuse
 		if (inter.mtlcolor.mType == UNLIT) return inter.mtlcolor.diffuse;
 
@@ -266,7 +269,7 @@ public:
 		Vector3f indir_illu(0.f);
 
 		if (inter.mtlcolor.mType == SPECULAR_REFLECTIVE)
-			return calcForMirror(origin, dir, inter);
+			return calcForMirror(origin, dir, inter, depth+1);
 		
 		// ****** Direct illumination
 		float light_pdf;
@@ -304,11 +307,10 @@ public:
 		// ****** Indirect Illumination
 		
 		// test RussianRoulette first
-		if (getRandomFloat() > Russian_Roulette) {
+		if (getRandomFloat() > Russian_Roulette)
 			return dir_illu;
-		}
 
-		// inter point to another 
+		// inter point p to another point x
 		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
 
 		p_to_x_dir = normalized(p_to_x_dir);
@@ -510,14 +512,21 @@ public:
 		int size = lightList.size();
 		
 		// if first time call it, put all the emissive object into lightList
+
 		if (firstimeCall) {
+			// 3/2/2024: need lock
+			sampleLight_mutex.lock();
 			for (auto& i : g->scene.objList) {
+				if (!firstimeCall)
+					break;
+
 				if (i->mtlcolor.hasEmission()) {
 					lightList.emplace_back(i.get());
-					totalArea += i->getArea();
+					totalArea += i->getArea();	// without lock, problem on i->getArea(), maybe due to unique_ptr
 				}
 			}
 			firstimeCall = false;
+			sampleLight_mutex.unlock();
 		}
 
 		size = lightList.size();
@@ -537,7 +546,17 @@ public:
 		pdf = pdf * lightObject->getArea() / totalArea;
 	}
 
-	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir,  Intersection& inter) {
+	/// <summary>
+	/// special case for perfect specular reflection
+	/// calculate color if hit on lights
+	/// </summary>
+	/// <param name="origin"> ray origin </param>
+	/// <param name="dir"> ray direction </param>
+	/// <param name="inter"> ray object intersection</param>
+	/// <param name="depth"> ray bouncing depth</param>
+	/// <returns></returns>
+	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir,  Intersection& inter, int depth) {
+		if (depth > 9) return 0;	// 2 mirror reflect forever causing stack overflow
 		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
 
 		p_to_x_dir = normalized(p_to_x_dir);
@@ -545,7 +564,6 @@ public:
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
-		// calculate only when inter is on a non-emissive object
 		if (x_inter.intersected ) {
 			float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
 
@@ -556,8 +574,9 @@ public:
 
 			// in case that pdf is too small and generate white img
 			if (pdf == 0.f) return { 0,0,0 };
+			if (pdf > 1.f) pdf = 1.f;
 
-			Vector3f res = traceRay(rayOrig, p_to_x_dir,-1);
+			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth+1);
 			return res * f_r * cos_pnormal_xdir / pdf ;
 		}
 
