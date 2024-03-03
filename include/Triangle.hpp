@@ -40,8 +40,8 @@ public:
 			return false;
 
 		Vector3f rightVec(S2.dot(E2), S1.dot(S),S2.dot(dir));	// right handside part in my note games101
-		float left = 1.0f / S1.dot(E1);
 		if (S1.dot(E1) == 0.f) return false;
+		float left = 1.0f / S1.dot(E1);
 
 		Vector3f res = left * rightVec;		// t u v are in res now
 
@@ -176,8 +176,6 @@ public:
 			inter.textPos = uv0 * (1 - u - v) + uv1 * u + uv2 * v;
 			inter.textureIndex = textureIndex;
 		}
-		
-
 	}
 };
 

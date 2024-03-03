@@ -124,6 +124,55 @@ public:
 		
 	}
 
+	void transObj(objl::Loader& loader, float xOff, float yOff, float zOff) {
+		for (auto &m : loader.LoadedMeshes) {
+			for (int i = 0; i < m.Vertices.size(); i ++) {
+				// each triangle
+				m.Vertices[i].Position.X += xOff;
+				m.Vertices[i].Position.Y += yOff;
+				m.Vertices[i].Position.Z += zOff;
+			}
+		}
+	}
+
+	void scaleObj(objl::Loader& loader, float xScale, float yScale, float zScale) {
+		for (auto &m : loader.LoadedMeshes) {
+			for (int i = 0; i < m.Vertices.size(); i ++) {
+				// each triangle
+				m.Vertices[i].Position.X *= xScale;
+				m.Vertices[i].Position.Y *= yScale;
+				m.Vertices[i].Position.Z *= zScale;
+			}
+		}
+	}
+
+	// in degree
+	void rotateObj(objl::Loader& loader, int axis, float degree) {
+		float rad = degree2Radians(degree);
+		for (auto& m : loader.LoadedMeshes) {
+			for (int i = 0; i < m.Vertices.size(); i++) {
+				// each triangle
+				float X = m.Vertices[i].Position.X;
+				float Y = m.Vertices[i].Position.Y;
+				float Z = m.Vertices[i].Position.Z;
+
+				if (axis == 0) {
+					m.Vertices[i].Position.Y = cos(rad) * Y - sin(rad) * Z;
+					m.Vertices[i].Position.Z = sin(rad) * Y + cos(rad) * Z;
+				}
+				else if (axis == 1) {
+					m.Vertices[i].Position.X = cos(rad) * X + sin(rad) * Z;
+					m.Vertices[i].Position.Z = -sin(rad) * X + cos(rad) * Z;
+				}
+				else if (axis == 2) {
+					m.Vertices[i].Position.X = cos(rad) * X - sin(rad) *Y;
+					m.Vertices[i].Position.Y = sin(rad) * X + cos(rad) * Y;
+				}
+
+			}
+		}
+	}
+	
 
 // ****************************************************** private *****************************************************
 public:

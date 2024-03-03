@@ -90,7 +90,7 @@ public:
 
 				Vector3f F0(0.04f);	// should be 0.04			
 				F0 = lerp(F0, this->diffuse, this->metallic);
-				Vector3f F = fresnelSchlick(costheta, F0);	// learnopgl
+				Vector3f F = fresnelSchlick(costheta, F0);	// learnopgl https://learnopengl.com/PBR/Theory
 				// float F = fresnel(-wi, h, eta_scene, this->eta);
 				float D = D_ndf(h, N, roughness);
 				//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
@@ -101,6 +101,7 @@ public:
 				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
 				Vector3f ref_term =  fr * specular;		// or 1
 				return diffuse_term + ref_term;
+				
 				
 				//************** Reflection term ends ********************
 			}
@@ -245,8 +246,7 @@ public:
 			break;
 		}
 		case MICROFACET: {
-			//if (wo.dot(N) > 0.0f)
-			//	return 0.5 / M_PI;
+			// corresponds to normal distribution function D
 			Vector3f h = normalized(wo + wi);
 			float cosTheta = N.dot(h);
 			cosTheta = std::max(cosTheta, 0.f);
