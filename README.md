@@ -42,6 +42,8 @@ right: Path Tracing
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/mirrorBall1600.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1600_512spp.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/1600.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_w_1024.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_r_512.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/wall.png)  
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/256_wall.png)
 
