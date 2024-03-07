@@ -24,16 +24,15 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 1;
+int SPP = 512;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
 #define EXPEDITE true			// BVH to expedite intersection
 #define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
-// 12/23/2023  when it's 3 sometimes error happen in debug mode
-// exited with code -1073741819. (first time compiling will most likely result in this)
 #define N_THREAD 20 
 #define GAMMA_COORECTION 
+#define GAMMA_VAL 0.78f
 
 
 // thread argument
@@ -171,8 +170,9 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 1599 && y == 115)
+				if (x == 40 && y == 66) {
 					PRINT = true;
+				}
 
 				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
@@ -196,6 +196,8 @@ public:
 					res = res + traceRay(eyeLocation, rayDir, 0);
 				}
 				res = res * SPP_inv;
+
+				PRINT = false;
 
 #ifdef GAMMA_COORECTION
 				// gamma correction
@@ -295,13 +297,10 @@ public:
 					Vector3f wo = -dir;
 					Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
 
-					dir_illu = L_i * f_r * cos_theta * cos_theta_prime / dis2 / light_pdf;
+					dir_illu = L_i * f_r * cos_theta * cos_theta_prime / (dis2 * light_pdf);
+
 				}
 			}
-			// clamp in case that dir_illu is a verysmall negative number
-			dir_illu.x = clamp(0, 1, dir_illu.x);
-			dir_illu.y = clamp(0, 1, dir_illu.y);
-			dir_illu.z = clamp(0, 1, dir_illu.z);
 		}
 
 		// ****** Indirect Illumination
@@ -312,9 +311,8 @@ public:
 
 		// inter point p to another point x
 		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
-
 		p_to_x_dir = normalized(p_to_x_dir);
-		
+
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene,rayOrig , p_to_x_dir);
@@ -327,15 +325,21 @@ public:
 			// BRDF has reciprocity
 			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
 
-			// in case that pdf is too small and generate white img
-			if (pdf == 0.f) return 0;
+			// in case that pdf is too small and generate white spot
+			// 3/6/2024 22:30    
+			// denoising hack
+			// pdf < 0.0xx is very unlikely. this hack is still not physically true.
+			if (pdf < 0.02f) return dir_illu;
 			if (pdf > 1) pdf = 1;
+			
 
 			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
-			indir_illu = res * f_r * cos_pnormal_xdir / pdf / Russian_Roulette;
+			indir_illu = res * f_r * cos_pnormal_xdir / (pdf * Russian_Roulette);
 		}
+
 		Vector3f ret = dir_illu + indir_illu;
-		return clamp(Vector3f(0), Vector3f(1), ret);
+		return ret;
+		//return clamp(Vector3f(0), Vector3f(1), ret);	// not physically true. the mirror example
 		
 		/*
 		// ****** calculate reflection and transmittance contribution
@@ -430,6 +434,7 @@ public:
 				if (i->mtlcolor.hasEmission()) continue; // do not test with light avatar
 				
 				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance ) {
+					i->intersect(orig, raydir, p_light_inter);	// for debug
 					return true;
 				}
 			}
@@ -522,7 +527,7 @@ public:
 
 				if (i->mtlcolor.hasEmission()) {
 					lightList.emplace_back(i.get());
-					totalArea += i->getArea();	// without lock, problem on i->getArea(), maybe due to unique_ptr
+					totalArea += i->getArea();	// without lock, sometimes problem on i->getArea(), maybe due to unique_ptr
 				}
 			}
 			firstimeCall = false;
@@ -535,7 +540,8 @@ public:
 			inter.intersected = false;
 			return;
 		}
-		
+
+		// 3/3/2024 need a better sample method
 		int index = (int)(getRandomFloat() * (size - 1) + 0.4999f);
 		if (size == 1) index = 0;
 		
@@ -547,7 +553,7 @@ public:
 	}
 
 	/// <summary>
-	/// special case for perfect specular reflection
+	/// special case for perfect specular reflection if res is calculated by dir illu + indir illu
 	/// calculate color if hit on lights
 	/// </summary>
 	/// <param name="origin"> ray origin </param>
@@ -621,9 +627,9 @@ void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 			res = res * SPP_inv;
 #ifdef GAMMA_COORECTION
 			// gamma correction
-			color.x = 255 * pow(clamp(0, 1, res.x), 0.6f);
-			color.y = 255 * pow(clamp(0, 1, res.y), 0.6f);
-			color.z = 255 * pow(clamp(0, 1, res.z), 0.6f);
+			color.x = 255 * pow(clamp(0, 1, res.x), GAMMA_VAL);
+			color.y = 255 * pow(clamp(0, 1, res.y), GAMMA_VAL);
+			color.z = 255 * pow(clamp(0, 1, res.z), GAMMA_VAL);
 #endif
 
 #ifndef GAMMA_COORECTION
@@ -632,14 +638,8 @@ void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 			color.z = 255 * clamp(0, 1, res.z);
 #endif // !GAMMA_COORECTION
 
-
 		}
 		//showProgress((float)y / e);		// comment it out for a clean terminal
 	}
 	
 }
-
-
-
-
-

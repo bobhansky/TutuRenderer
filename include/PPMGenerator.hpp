@@ -147,7 +147,10 @@ public:
 	}
 
 	// in degree
+	// axis: 0 x   1 y  2 z, world coords
 	void rotateObj(objl::Loader& loader, int axis, float degree) {
+		if (degree == 0) return;
+
 		float rad = degree2Radians(degree);
 		for (auto& m : loader.LoadedMeshes) {
 			for (int i = 0; i < m.Vertices.size(); i++) {
