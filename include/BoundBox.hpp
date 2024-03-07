@@ -75,8 +75,13 @@ public:
 		// tmin: for 3 dimensions, the latest time entering the box
 		// tmax: for 3 dimensions, the earlest time leaving the box
 		float t_enter, t_exit;
-		t_enter = fmax(tmin_x, fmax(tmin_y, tmin_z));
-		t_exit = fmin(tmax_x, fmin(tmax_y, tmax_z));
+		// t_enter = fmax(tmin_x, fmax(tmin_y, tmin_z));
+		float buffer = tmin_y > tmin_z ? tmin_y : tmin_z;
+		t_enter = tmin_x > buffer ? tmin_x : buffer;
+
+		// t_exit = fmin(tmax_x, fmin(tmax_y, tmax_z));
+		buffer = tmax_y < tmax_z ? tmax_y : tmax_z;
+		t_exit = tmax_x < buffer ? tmax_x : buffer;
 
 		// use <= >= here.   when triangle is parallel to one dimension, 
 		// t_enter == t_exit within that dimension

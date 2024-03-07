@@ -281,14 +281,15 @@ Vector3f getRefractionDir(const Vector3f& incident, const Vector3f& normal, floa
 /// <param name="n">: macrosurface normal  </param>
 /// <param name="roughness">: width parameter alpha_g </param>
 /// <returns>return the area of microfacet with micro normal h in dA</returns>
-float D_ndf(Vector3f& h, Vector3f& n, float roughness) {
+float D_ndf(const Vector3f& h, const Vector3f& n, float roughness) {
 	float alpha = roughness * roughness;
 	float cos_nh_2 = (n.dot(h)) * (n.dot(h));
 	cos_nh_2 = std::max(cos_nh_2, 0.f);
 	float sin_nh_2 = 1 - cos_nh_2;
-	float denominator = 1 / (M_PI * powf(alpha* alpha * cos_nh_2 + sin_nh_2, 2));
+	float sum = alpha * alpha * cos_nh_2 + sin_nh_2;
+	float res = (alpha * alpha) / (M_PI * (sum * sum));
 
-	return alpha * alpha * denominator;
+	return res;
 }
 
 /// <summary>

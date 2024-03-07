@@ -15,7 +15,7 @@ enum MaterialType {
 
 class Material {
 public:
-	Vector3f diffuse =  Vector3f(0.725f, 0.71f, 0.68f);
+	Vector3f diffuse =  Vector3f(0.9f, 0.9f, 0.9f);
 	Vector3f specular = Vector3f(1.f);
 	Vector3f emission = Vector3f(0.f);
 	MaterialType mType = LAMBERTIAN;
@@ -63,7 +63,7 @@ public:
 
 	// BxDF, return vec3f of elements within [0,1] 
 	// wi, wo: origin at inter.pos center, pointing outward
-	// wi: Light direction
+	// wi: incident ray
 	// wo: view dir
 	Vector3f BxDF( Vector3f& wi,  Vector3f& wo, Vector3f& N, float eta_scene) {
 		switch (mType) {
@@ -99,7 +99,7 @@ public:
 
 				fr = clamp(0, 1, fr);	
 				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
-				Vector3f ref_term =  fr * specular;		// or 1
+				Vector3f ref_term =  fr * 1;		// or 1
 				return diffuse_term + ref_term;
 				
 				
@@ -131,7 +131,7 @@ public:
 
 			float r0 = getRandomFloat();
 			float r1 = getRandomFloat();
-			float a2 = roughness * roughness * roughness * roughness;
+			float a2 = roughness * roughness *roughness* roughness;
 			float phi = 2 * M_PI * r1;
 			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
 
@@ -247,15 +247,12 @@ public:
 		}
 		case MICROFACET: {
 			// corresponds to normal distribution function D
+			// https://www.tobias-franke.eu/log/2014/03/30/notes_on_importance_sampling.html
 			Vector3f h = normalized(wo + wi);
 			float cosTheta = N.dot(h);
 			cosTheta = std::max(cosTheta, 0.f);
-			float a2 = roughness * roughness;
-			float exp = (a2 - 1) * cosTheta * cosTheta + 1;
-			float D = a2 / (M_PI * exp * exp);
-			float res = D * cosTheta / (4.f * wo.dot(h));
-			return res;
 
+			return D_ndf(h, N, roughness) * cosTheta / (4.f * wo.dot(h));
 			break;
 		}
 		case SPECULAR_REFLECTIVE: {
