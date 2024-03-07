@@ -434,7 +434,6 @@ public:
 				if (i->mtlcolor.hasEmission()) continue; // do not test with light avatar
 				
 				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance ) {
-					i->intersect(orig, raydir, p_light_inter);	// for debug
 					return true;
 				}
 			}
