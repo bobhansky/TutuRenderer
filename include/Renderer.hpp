@@ -24,9 +24,6 @@
 #include "Texture.hpp"
 
 
-
-
-
 // thread argument
 // 12/23/2023: unknown reason, if I put start and end inside this arg struct
 // instead of passing them as thread function parameters like Im doing now
@@ -235,7 +232,7 @@ public:
 				exit(1);
 				}
 				inter.mtlcolor.diffuse = g->diffuseMaps.at(inter.diffuseIndex)
-					.getRGBat(inter.textPos.x, inter.textPos.y);
+					->getRGBat(inter.textPos.x, inter.textPos.y);
 		}
 		// if do shading with normal map
 		if (inter.normalMapIndex != -1) {
@@ -427,8 +424,8 @@ public:
 
 	// TBN transformation matrix to change the dir of normal
 	void changeNormalDir(Intersection& inter) {
-		Texture& nMap = g->normalMaps.at(inter.normalMapIndex);
-		Vector3f color = nMap.getRGBat(inter.textPos.x, inter.textPos.y);
+		Texture *nMap = g->normalMaps.at(inter.normalMapIndex);
+		Vector3f color = nMap->getRGBat(inter.textPos.x, inter.textPos.y);
 
 		switch (inter.obj->objectType)
 		{

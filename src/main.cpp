@@ -19,91 +19,123 @@ int main(int argc, char* argv[]) {
 
 	PPMGenerator g(argv[1]);
 
-	Material redmtl;
-	redmtl.diffuse = Vector3f(0.63f, 0.065f, 0.05f);
-	redmtl.ka = 0.2;
-	redmtl.kd = 0.5;
-	redmtl.ks = 0;
-	redmtl.n = 64;
-	redmtl.alpha = 1;
-	redmtl.eta = 1.52;
-
-	Material greenmtl;
-	greenmtl.diffuse = Vector3f(0.14f, 0.45f, 0.091f);
-	greenmtl.ka = 0.2;
-	greenmtl.kd = 0.5;
-	greenmtl.ks = 0;
-	greenmtl.n = 64;
-	greenmtl.alpha = 1;
-	greenmtl.eta = 1.52;
-
-	Material whitemtl;
-	whitemtl.diffuse = Vector3f(0.725f, 0.71f, 0.68f);
-	whitemtl.ka = 0.2;
-	whitemtl.kd = 0.5;
-	whitemtl.ks = 0;
-	whitemtl.n = 64;
-	whitemtl.alpha = 1;
-	whitemtl.eta = 1.52;
-
-	Material glass;
-	glass.diffuse = Vector3f(0.725f, 0.71f, 0.68f);
-	glass.ka = 0.1;
-	glass.kd = 0.1;
-	glass.ks = 0.2;
-	glass.n = 64;
-	glass.alpha = 0.2;
-	glass.eta = 1.52;
-
 	Material lightmtl;
-	lightmtl.diffuse = Vector3f(0.9f, 0.9f, 0.9f);
-	lightmtl.ka = 1;
-	lightmtl.kd = 0.4;
-	lightmtl.ks = 0;
-	lightmtl.n = 64;
-	lightmtl.alpha = 1;
-	lightmtl.eta = 1.52;
-	lightmtl.emission = Vector3f(47.8348f, 38.5664f, 31.0808f);
+	lightmtl.emission = Vector3f(60.4f, 60.4f, 60.4f);
 
-	Material metalmtl;
-	metalmtl.mType = MICROFACET;
-	metalmtl.diffuse = Vector3f(0.725f, 0.71f, 0.68f);
-	metalmtl.ka = 1;
-	metalmtl.kd = 0.4;
-	metalmtl.ks = 0;
-	metalmtl.n = 64;
-	metalmtl.alpha = 1;
-	metalmtl.eta = 12.5;
-	metalmtl.roughness = 0.25;
+	Material orangelightmtl;
+	orangelightmtl.diffuse = { 0.749, 0.074, 0.074 };
+	orangelightmtl.emission = Vector3f(64.9f, 7.4f, 7.4f) * 1.6f;
+
+	Material frontMtl;
+	frontMtl.diffuse = { 0.725f, 0.71f, 0.68f };
+	frontMtl.mType = MICROFACET;
+	frontMtl.roughness = 0.2f;
+	frontMtl.metallic = 0.15f;
+
+	Material metalMtl;
+	metalMtl.diffuse = { 0.725f, 0.71f, 0.68f };
+	metalMtl.mType = MICROFACET;
+	metalMtl.roughness = 0.25f;
+	metalMtl.metallic = 0.4;
+
+	Material leftMtl;
+	leftMtl.diffuse = { 0.725f, 0.71f, 0.68f };
+	leftMtl.mType = MICROFACET;
+	leftMtl.roughness = 0.2;
+	leftMtl.metallic = 0.67;
+
+	Material floorMtl;
+	floorMtl.diffuse = { 0.5, 0.5f, 0.5f };
+	floorMtl.mType = LAMBERTIAN;
+	floorMtl.roughness = 0.8f;
+	floorMtl.metallic = 0;
+
+	Material Unlit;
+	Unlit.mType = UNLIT;
+
+	Material shipmtl;
+	shipmtl.diffuse = { 0.6, 0.6, 0.6 };
+	shipmtl.mType = MICROFACET;
+	shipmtl.roughness = 0.3f;
+	shipmtl.metallic = 1;
+
+	Material smoothmtl;
+	smoothmtl.diffuse = { 0.725f, 0.71f, 0.68f };
+	smoothmtl.mType = MICROFACET;
+	smoothmtl.roughness = 0.07f;
+	smoothmtl.metallic = 0;
 
 
-	objl::Loader floor;
-	if (floor.LoadFile("./model/floor.obj"))
-		g.loadObj(floor, whitemtl, -1, -1);
+	//objl::Loader light;
+	//if (light.LoadFile("./model/space/light.obj")) {
+	//	g.transObj(light, 10, -20, 0);
+	//	g.loadObj(light, lightmtl, -1, -1);
+	//}
 
-	//objl::Loader shortBox;
-	//if (shortBox.LoadFile("./model/shortbox.obj"))
-	//	g.loadObj(shortBox, metalmtl, -1, -1);
+	objl::Loader orange1;
+	if (orange1.LoadFile("./model/space/lightOrange1.obj")) {
+		g.transObj(orange1, 0, -5, 10);
+		g.loadObj(orange1, lightmtl, -1, -1);
 
-	objl::Loader tallbox;
-	if (tallbox.LoadFile("./model/tallbox.obj"))
-		g.loadObj(tallbox, metalmtl, -1, -1);
+		g.transObj(orange1, 0, 15, 0);
+		g.loadObj(orange1, lightmtl, -1, -1);
+
+	}
+
+
+	objl::Loader front;
+	if (front.LoadFile("./model/space/front.obj"))
+		g.loadObj(front, frontMtl, 1, -1);
+
+	objl::Loader back;
+	if (back.LoadFile("./model/space/back.obj"))
+		g.loadObj(back, floorMtl, 1, -1);
 
 	objl::Loader left;
-	if (left.LoadFile("./model/left.obj"))
-		g.loadObj(left, redmtl, -1, -1);
+	if (left.LoadFile("./model/space/left.obj"))
+		g.loadObj(left, leftMtl, 1, -1);
 
 	objl::Loader right;
-	if (right.LoadFile("./model/right.obj"))
-		g.loadObj(right, greenmtl, -1, -1);
+	if (right.LoadFile("./model/space/right.obj"))
+		g.loadObj(right, floorMtl, 2, -1);
 
-	objl::Loader light;
-	if (light.LoadFile("./model/light.obj"))
-		g.loadObj(light, lightmtl, -1, -1);
+	objl::Loader floor;
+	if (floor.LoadFile("./model/space/floor.obj"))
+		g.loadObj(floor, floorMtl, 2, -1);
 
+	objl::Loader roof;
+	if (roof.LoadFile("./model/space/roof.obj"))
+		g.loadObj(roof, floorMtl, 2, -1);
+
+
+	objl::Loader floor_r;
+	if (floor_r.LoadFile("./model/space/floor_r.obj"))
+		g.loadObj(floor_r, smoothmtl, -1, -1);
+
+	objl::Loader sky;
+	if (sky.LoadFile("./model/space/sky.obj")) {
+		g.loadObj(sky, Unlit, 0, -1);
+	}
+
+	objl::Loader ship;
+	if (ship.LoadFile("./model/space/sordfish_smooth.obj")) {
+		g.rotateObj(ship, 0, -10);
+		g.rotateObj(ship, 2, -15);
+		g.scaleObj(ship, 0.1, 0.1, 0.1);
+		g.transObj(ship, 32, -5, -10);
+		g.loadObj(ship, shipmtl, -1, -1);
+	}
+
+	objl::Loader smallBox;
+	if (smallBox.LoadFile("./model/space/smallBox.obj")) {
+		g.rotateObj(smallBox, 1, 180);
+		g.scaleObj(smallBox, 15, 15, 10);
+		g.transObj(smallBox, -2.4, -44, -50);
+		g.loadObj(smallBox, metalMtl, -1, -1);
+	}
 
 	Renderer r(&g);
-	auto start = std::chrono::system_clock::now();        // #include <chrono>
+	auto start = std::chrono::system_clock::now();		// #include <chrono>
 	r.render();
 	auto end = std::chrono::system_clock::now();
 	std::cout << "\nRendering Time consumed: \n";
@@ -112,7 +144,7 @@ int main(int argc, char* argv[]) {
 
 	Postprocessor p(&g.output);
 	start = std::chrono::system_clock::now();
-	g.output = p.performPostProcess();
+	//g.output = p.performPostProcess();
 	end = std::chrono::system_clock::now();
 	std::cout << "\nPost Processing Time consumed: \n";
 	std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
@@ -120,7 +152,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "output to img...\n";
 	g.generate();
 
+
+
 	return 0;
-
-
 }

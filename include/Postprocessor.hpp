@@ -7,7 +7,11 @@
 #include "PPMGenerator.hpp"
 #include "Texture.hpp"
 
-
+#define STRENGTH 2
+#define GAUSSIANLOOP 2
+#define KERNELSIZE 20
+#define STDDEV 60.f
+#define EXPOSURE 1.f
 
 class Postprocessor {
 public:
@@ -28,16 +32,24 @@ public:
 		renderTextures[1] = getEmmisiveTexture(&renderTextures[0]);
 		//	1.2 gaussian blur 
 		int index = 2;		// 2 and 3 interchangablly
-		renderTextures[index] = getGaussianBlurTexture(&renderTextures[1], 11, 30.f);
+		renderTextures[index] = getGaussianBlurTexture(&renderTextures[1], KERNELSIZE, STDDEV);
 		index = 3;
-		for (int i = 0; i < 2; i++) {
-			renderTextures[index] = getGaussianBlurTexture(&renderTextures[index == 2 ? 3 : 2], 11, 30.f);
+		for (int i = 0; i < GAUSSIANLOOP; i++) {
+			renderTextures[index] = getGaussianBlurTexture(&renderTextures[index == 2 ? 3 : 2], KERNELSIZE, STDDEV);
 			index = index == 2 ? 3 : 2;
 		}
 		//	1.3 add raw img to blured
 		index = index == 2 ? 3 : 2;
 		// return renderTextures[index];		// return blured emmisive texture
-		return add(&renderTextures[0], &renderTextures[index]);
+		renderTextures[index] = add(&renderTextures[0], &renderTextures[index]);	// bloom 
+
+#ifndef HDR
+		return renderTextures[index];
+#endif // !HDR
+#ifdef HDR
+		return getHDRtexture(&renderTextures[index]);
+#endif
+		
 		
 	}
 
@@ -59,8 +71,8 @@ public:
 			};
 
 		// blur vertical
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
 				Vector3f& color = res.rgb.at(y * w + x);
 
 				int startY = -kernelSize * 0.5;
@@ -80,8 +92,8 @@ public:
 		}
 		// horizontally
 		src = res;
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
 				Vector3f& color = res.rgb.at(y * w + x);
 
 				int startX = -kernelSize * 0.5;
@@ -110,15 +122,19 @@ public:
 		int h = res.height; int w = res.width;
 		res.rgb.resize(w * h);
 
-		for (int x = 0; x < w; x++) {
-			for (int y = 0; y < h; y++) {
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
 				Vector3f& color = res.rgb.at(y * res.width + x);
 
 				float U = (float)x / w;
 				float V = (float)y / h;
-				Vector3f col = src.getRGBat(clamp(0, 1, U), clamp(0, 1, V));
+				Vector3f col = src.getRGBat(clamp(0, 0.999f, U), clamp(0, 0.999f, V));
 				if (col.norm() > 3.f) {	// if emmisive pixel
-					color = col;
+					float mx = col.x > col.y ? col.x : col.y;
+					mx = mx > col.z ? mx : col.z;
+					color.x = rescale(col.x, mx, 0.f, STRENGTH, 0.f);
+					color.y = rescale(col.y, mx, 0.f, STRENGTH, 0.f);
+					color.z = rescale(col.z, mx, 0.f, STRENGTH, 0.f);
 				}
 			}
 		}
@@ -141,5 +157,37 @@ public:
 			}
 		}
 		return res;
+	}
+
+
+	// exposure tone mapping  https://learnopengl.com/Advanced-Lighting/HDR
+	// Tone mapping is the process of transforming floating point color values 
+	// to the expected [0.0, 1.0] range known as low dynamic range without losing too much detail, 
+	// often accompanied with a specific stylistic color balance.
+	Texture getHDRtexture(Texture* img) {
+		float gamma = 2.2f;
+		Texture	src = *img;
+		Texture dst;
+		dst.width = src.width;
+		dst.height = src.height;
+		dst.rgb.resize(dst.width * dst.height);
+
+		for (int y = 0; y < dst.height; y++) {
+			for (int x = 0; x < dst.width; x++) {
+				Vector3f& color = dst.rgb.at(y * src.width + x);
+
+				float U = (float)x / dst.width;
+				float V = (float)y / dst.height;
+				Vector3f hdrcolor = src.getRGBat(clamp(0, 0.999f, U), clamp(0, 0.999f, V));
+				// exposure tone mapping
+				Vector3f mapped;
+				mapped.x = 1 - exp(-hdrcolor.x * EXPOSURE);
+				mapped.y = 1 - exp(-hdrcolor.y * EXPOSURE);
+				mapped.z = 1 - exp(-hdrcolor.z * EXPOSURE);
+
+				color = mapped;
+			}
+		}
+		return dst;
 	}
 };

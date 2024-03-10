@@ -44,6 +44,10 @@ inline Vector3f clamp(const Vector3f& lo, const Vector3f& hi, Vector3f& v)
 	return res;
 }
 
+inline float rescale(float input, float originMax, float originMin, float targetMax, float targetMin) {
+	return targetMin + ((targetMax - targetMin) * (input - originMin)/(originMax - originMin));
+}
+
 
 // check if str is convertable to a positive integer
 // if there's a char other than 0 to 9
