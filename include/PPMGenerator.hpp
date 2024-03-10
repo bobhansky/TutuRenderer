@@ -17,6 +17,18 @@
 #include "Texture.hpp"
 #include "OBJ_Loader.h"
 
+
+bool PRINT = false;			// debug helper
+int SPP = 16;
+float SPP_inv = 1.f / SPP;
+float Russian_Roulette = 0.78f;
+
+#define EXPEDITE true			// BVH to expedite intersection
+#define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
+#define N_THREAD 20
+#define GAMMA_COORECTION 
+#define GAMMA_VAL 0.78f
+
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
 
@@ -26,6 +38,51 @@ std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
 /// </summary
 class PPMGenerator {
 public:
+	std::ifstream fin;
+	std::ofstream fout;
+	const char* inputName;	
+	Texture output;						// pixel data, output rgb
+	std::vector<Texture> diffuseMaps;	// texture data
+	std::vector<Texture> normalMaps;    // normalMap array
+	std::vector<Texture> roughnessMap;		// texture data
+	std::vector<Texture> metallicMap;    // normalMap array
+
+
+	//------------------ reading data: rendering setting and my own obj loader (replaced by OBJ_Loader)
+	int width = -1;
+	int height = -1;
+	Vector3f eyePos = Vector3f(FLT_MAX, 0, 0);
+	Vector3f viewdir = Vector3f(FLT_MAX, 0, 0);
+	int hfov = -1;
+	Vector3f updir = Vector3f(FLT_MAX, 0, 0);
+	Vector3f bkgcolor = Vector3f(FLT_MAX, 0, 0);
+	float eta;							// index of refraction of this scene
+	Scene scene;
+	std::vector<Vector3f> vertices;		// triangle vertex array
+	std::vector<Vector3f> normals;		// vertex normal array
+	std::vector<Vector2f> textCoords;   // texture coordinates array
+
+	bool isTextureOn = false;
+	int textIndex = -1;					// texture index, always points to the activated texture in the textures array
+	int bumpIndex = -1;					// normal map index, always points to the activated normal Map in the normalMap array
+	// in input file, write "bump ..." once then activate it once, -1 means inactivated
+	int roughnessIndex = -1;
+	int metallicIndex = -1;
+
+	int parallel_projection = 0;  // 0 for perspective, 1 for orthographic
+	Material mtlcolor;			  // temp buffer for material color	default 0 0 0
+	// ******* depthcueing *******
+	bool depthCueing = false;	// depthcueing flag
+	Vector3f dc;				// depthcueing color
+	float amin, amax, distmin, distmax;
+	// ******* depthcueing ends ********
+//----------------- reading data ends
+
+
+	friend class Renderer;
+
+
+
 	// Constructors, check if the stream to file is correctly opened
 	// and initialze fields
 	PPMGenerator(const char * path)  {
@@ -177,47 +234,6 @@ public:
 	}
 	
 
-// ****************************************************** private *****************************************************
-public:
-	std::ifstream fin;
-	std::ofstream fout;
-	const char* inputName;
-	std::vector<Vector3i> rgb;			// pixel data
-	std::vector<Texture> textures;		// texture data
-	std::vector<Texture> normalMaps;    // normalMap array
-
-
-	//------------------ reading data
-	int width = -1;
-	int height = -1;
-	Vector3f eyePos = Vector3f(FLT_MAX,0,0);
-	Vector3f viewdir = Vector3f(FLT_MAX,0,0);
-	int hfov = -1;
-	Vector3f updir = Vector3f(FLT_MAX, 0, 0);
-	Vector3f bkgcolor = Vector3f(FLT_MAX, 0, 0);
-	float eta;							// index of refraction of this scene
-	Scene scene;
-	std::vector<Vector3f> vertices;		// triangle vertex array
-	std::vector<Vector3f> normals;		// vertex normal array
-	std::vector<Vector2f> textCoords;   // texture coordinates array
-
-	bool isTextureOn = false;
-	int textIndex = -1;					// texture index, always points to the activated texture in the textures array
-	int bumpIndex = -1;					// normal map index, always points to the activated normal Map in the normalMap array
-										// in input file, write "bump ..." once then activate it once, -1 means inactivated
-
-	int parallel_projection = 0;  // 0 for perspective, 1 for orthographic
-	int shadowType = 0;			  // 0 for hard shadow, 1 for soft shadow
-	Material mtlcolor;			  // temp buffer for material color	default 0 0 0
-		// ******* depthcueing *******
-		bool depthCueing = false;	// depthcueing flag
-		Vector3f dc;				// depthcueing color
-		float amin, amax, distmin, distmax;
-		// ******* depthcueing ends ********
-	//----------------- reading data ends
-
-
-	friend class Renderer;
 
 	/// <summary>
 	/// read the input file recursively and initialize the essential data for 
@@ -244,8 +260,10 @@ public:
 			}
 
 			// initialize the rgb arrays
-			rgb.resize(width * height);
-			rgb.assign(width * height, Vector3i(255 * bkgcolor.x, 255 * bkgcolor.y, 255 * bkgcolor.z));	//  set to bkgcolor
+			output.rgb.resize(width * height);
+			output.rgb.assign(width * height, Vector3f( bkgcolor.x,  bkgcolor.y,  bkgcolor.z));	//  set to bkgcolor
+			output.width = width;
+			output.height = height;
 		}
 
 		catch (std::runtime_error e) {
@@ -314,6 +332,16 @@ public:
 				if (bumpIndex != -1) {
 					s->normalMapIndex = bumpIndex;
 					bumpIndex = -1;
+				}
+
+				if (roughnessIndex != -1) {
+					s->roughnessMapIndex = roughnessIndex;
+					roughnessIndex = -1;
+				}
+
+				if (metallicIndex != -1) {
+					s->metallicMapIndex = metallicIndex;
+					metallicIndex = -1;
 				}
 			}
 
@@ -570,13 +598,7 @@ public:
 			}
 
 
-		// read shadow config
-		else if (key.compare("shadow") == 0) {
-			checkFin(); fin >> a;
-			if (a.compare("soft") == 0) {
-				shadowType = 1;
-			}
-		}
+
 		// depthcueing flag
 		else if (key.compare("depthcueing") == 0) {
 		depthCueing = true;
@@ -601,17 +623,17 @@ public:
 
 		// color texture
 		else if (!key.compare("texture")) {
-			int size0 = textures.size();
+			int size0 = diffuseMaps.size();
 			checkFin(); fin >> a;
-			loadTexture(a.c_str(), textures);
+			loadTexture(a.c_str(), diffuseMaps);
 			isTextureOn = true;		// replace mtlcolor's diffuse term with texture data
 
-			int size1 = textures.size();
+			int size1 = diffuseMaps.size();
 			// if a(the name of the texture) is loaded before
 			// then point the texture index to it in the array
 			if (size0 == size1) {
-				for (int i = 0; i < textures.size(); i++) {
-					if (!textures.at(i).name.compare(a)) {
+				for (int i = 0; i < diffuseMaps.size(); i++) {
+					if (!diffuseMaps.at(i).name.compare(a)) {
 						textIndex = i;
 						break;
 					}
@@ -687,7 +709,24 @@ public:
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
 				size_t index = getIndex(j, i);
-				fout << rgb[index].x << " " << rgb[index].y << " " << rgb[index].z << "\n";
+				
+				Vector3f color = output.rgb[index];
+#ifdef GAMMA_COORECTION
+				// gamma correction
+				color.x = 255 * pow(clamp(0, 1, color.x), GAMMA_VAL);
+				color.y = 255 * pow(clamp(0, 1, color.y), GAMMA_VAL);
+				color.z = 255 * pow(clamp(0, 1, color.z), GAMMA_VAL);
+#endif
+
+#ifndef GAMMA_COORECTION
+				color.x = 255 * clamp(0, 1, color.x);
+				color.y = 255 * clamp(0, 1, color.y);
+				color.z = 255 * clamp(0, 1, color.z);
+#endif // !GAMMA_COORECTION
+
+				fout << (int)color.x << " " 
+					 << (int)color.y << " "
+					 << (int)color.z << "\n";
 			}
 		}
 	}

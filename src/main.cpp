@@ -4,6 +4,7 @@
 #include "../include/Object.hpp"
 #include "../include/Renderer.hpp"
 #include "../include/OBJ_Loader.h"
+#include "../include/Postprocessor.hpp"
 
 #include <string>
 #include <chrono>
@@ -55,7 +56,7 @@ int main(int argc, char* argv[]) {
 	glass.eta = 1.52;
 
 	Material lightmtl;
-	lightmtl.diffuse = Vector3f(0.65f, 0.65f, 0.65f);
+	lightmtl.diffuse = Vector3f(0.9f, 0.9f, 0.9f);
 	lightmtl.ka = 1;
 	lightmtl.kd = 0.4;
 	lightmtl.ks = 0;
@@ -65,16 +66,15 @@ int main(int argc, char* argv[]) {
 	lightmtl.emission = Vector3f(47.8348f, 38.5664f, 31.0808f);
 
 	Material metalmtl;
-	metalmtl.mType = SPECULAR_REFLECTIVE;
-	metalmtl.diffuse = Vector3f(0.913f, 0.921f, 0.925f);
+	metalmtl.mType = MICROFACET;
+	metalmtl.diffuse = Vector3f(0.725f, 0.71f, 0.68f);
 	metalmtl.ka = 1;
 	metalmtl.kd = 0.4;
 	metalmtl.ks = 0;
 	metalmtl.n = 64;
 	metalmtl.alpha = 1;
 	metalmtl.eta = 12.5;
-	metalmtl.roughness = 0.05;
-	metalmtl.metallic = 1;
+	metalmtl.roughness = 0.25;
 
 
 	objl::Loader floor;
@@ -103,17 +103,22 @@ int main(int argc, char* argv[]) {
 
 
 	Renderer r(&g);
-	auto start = std::chrono::system_clock::now();		// #include <chrono>
-
+	auto start = std::chrono::system_clock::now();        // #include <chrono>
 	r.render();
 	auto end = std::chrono::system_clock::now();
 	std::cout << "\nRendering Time consumed: \n";
 	std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
 
+
+	Postprocessor p(&g.output);
+	start = std::chrono::system_clock::now();
+	g.output = p.performPostProcess();
+	end = std::chrono::system_clock::now();
+	std::cout << "\nPost Processing Time consumed: \n";
+	std::cout << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds\n";
+
 	std::cout << "output to img...\n";
 	g.generate();
-	
-
 
 	return 0;
 

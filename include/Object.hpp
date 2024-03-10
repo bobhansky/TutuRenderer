@@ -31,8 +31,8 @@ public:
 	bool isTextureActivated = false;
 	int textureIndex = -1;		// diffuse color map index
 	int normalMapIndex = -1;    // normal map index
-
-
+	int roughnessMapIndex = -1;
+	int metallicMapIndex = -1;
 
 	BoundBox bound;
 	// initialize the bound of this object

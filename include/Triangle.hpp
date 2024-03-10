@@ -62,7 +62,7 @@ public:
 			if (isTextureActivated)
 			{
 				inter.textPos = uv0 * (1 - res.y - res.z) + uv1 * res.y + uv2 * res.z;
-				inter.textureIndex = this->textureIndex;
+				inter.diffuseIndex = this->textureIndex;
 				inter.normalMapIndex = this->normalMapIndex;
 			}
 			return true;
@@ -148,7 +148,6 @@ public:
 		e1 = v1 - v0;
 		e2 = v2 - v0;
 		return  crossProduct(e1, e2).norm() * 0.5f;
-
 	}
 
 	void samplePoint(Intersection& inter, float& pdf) override {
@@ -174,7 +173,7 @@ public:
 		if (isTextureActivated) {
 			inter.normalMapIndex = normalMapIndex;
 			inter.textPos = uv0 * (1 - u - v) + uv1 * u + uv2 * v;
-			inter.textureIndex = textureIndex;
+			inter.diffuseIndex = textureIndex;
 		}
 	}
 };
