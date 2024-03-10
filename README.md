@@ -38,6 +38,7 @@ right: Path Tracing
 
 ----------------------------
 ### others  
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/junge.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/2glossy.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/mirrorBall1600.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1600_512spp.png)
