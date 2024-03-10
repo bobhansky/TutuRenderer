@@ -29,6 +29,8 @@ float Russian_Roulette = 0.78f;
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
 
+#define HDR
+
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
 
@@ -42,10 +44,10 @@ public:
 	std::ofstream fout;
 	const char* inputName;	
 	Texture output;						// pixel data, output rgb
-	std::vector<Texture> diffuseMaps;	// texture data
-	std::vector<Texture> normalMaps;    // normalMap array
-	std::vector<Texture> roughnessMap;		// texture data
-	std::vector<Texture> metallicMap;    // normalMap array
+	std::vector<Texture*> diffuseMaps;	// texture data
+	std::vector<Texture*> normalMaps;    // normalMap array
+	std::vector<Texture*> roughnessMaps;		// texture data
+	std::vector<Texture*> metallicMaps;    // normalMap array
 
 
 	//------------------ reading data: rendering setting and my own obj loader (replaced by OBJ_Loader)
@@ -111,6 +113,37 @@ public:
 		if (fout.is_open()) {
 			fout.clear();
 			fout.close();
+		}
+
+		// delete allocated texture when render() is done
+		deleteMaps();
+	}
+
+	void deleteMaps() {
+		for (int i = 0; i < diffuseMaps.size(); i++) {
+			if (diffuseMaps[i]) {
+				delete diffuseMaps[i];
+				diffuseMaps[i] = nullptr;
+			}
+			
+		}
+		for (int i = 0; i < normalMaps.size(); i++) {
+			if (normalMaps[i]) {
+				delete normalMaps[i];
+				normalMaps[i] = nullptr;
+			}
+		}
+		for (int i = 0; i < roughnessMaps.size(); i++) {
+			if (roughnessMaps[i]) {
+				delete roughnessMaps[i];
+				roughnessMaps[i] = nullptr;
+			}
+		}
+		for (int i = 0; i < metallicMaps.size(); i++) {
+			if (metallicMaps[i]) {
+				delete metallicMaps[i];
+				metallicMaps[i] = nullptr;
+			}
 		}
 	}
 
@@ -633,7 +666,7 @@ public:
 			// then point the texture index to it in the array
 			if (size0 == size1) {
 				for (int i = 0; i < diffuseMaps.size(); i++) {
-					if (!diffuseMaps.at(i).name.compare(a)) {
+					if (!diffuseMaps.at(i)->name.compare(a)) {
 						textIndex = i;
 						break;
 					}
@@ -654,7 +687,7 @@ public:
 			// then point the texture index to it in the array
 			if (size0 == size1) {
 				for (int i = 0; i < normalMaps.size(); i++) {
-					if (!normalMaps.at(i).name.compare(a)) {
+					if (!normalMaps.at(i)->name.compare(a)) {
 						bumpIndex = i;
 						break;
 					}
@@ -666,8 +699,8 @@ public:
 				// recover to requiered format (tangent plane)
 				// in normal map, x y components can be in range -1 to 1
 				// z from 0 to 1
-				for (int i = 0; i < normalMaps[bumpIndex].rgb.size();i++) {
-					Vector3f& c = normalMaps[bumpIndex].rgb[i];
+				for (int i = 0; i < normalMaps[bumpIndex]->rgb.size();i++) {
+					Vector3f& c = normalMaps[bumpIndex]->rgb[i];
 					c = c * 2.f;
 					c.x = c.x - 1.f;
 					c.y = c.y - 1.f;
@@ -910,10 +943,10 @@ public:
 
 
 	// read the file "name" and store it's ascii ppm data into textList
-	void loadTexture(const char* name, std::vector<Texture>& textList) {
+	void loadTexture(const char* name, std::vector<Texture*>& textList) {
 		 //if texture is loaded before, do not reload this texture
 		for (int i = 0; i < textList.size();i++) {
-			if (!textList.at(i).name.compare(name)) {
+			if (!textList.at(i)->name.compare(name)) {
 				return;
 			}
 		}
@@ -941,14 +974,14 @@ public:
 			exit(-1);
 		}
 
-		Texture temptext;
-		temptext.name = std::string(name);
+		Texture *temptext = new Texture;
+		temptext->name = std::string(name);
 
 		checkPosInt(b1); checkPosInt(b2);
 		width = std::stoi(b1);
 		height = std::stoi(b2);
-		temptext.width = width;
-		temptext.height = height;
+		temptext->width = width;
+		temptext->height = height;
 
 		input >> b0;	// for 255
 		// read data
@@ -960,7 +993,7 @@ public:
 				r = std::stoi(b0);
 				g = std::stoi(b1);
 				b = std::stoi(b2);
-				temptext.rgb.emplace_back(Vector3f (r/255.f, g/255.f, b/255.f));
+				temptext->rgb.emplace_back(Vector3f (r/255.f, g/255.f, b/255.f));
 			}
 		}
 		textList.emplace_back(temptext);

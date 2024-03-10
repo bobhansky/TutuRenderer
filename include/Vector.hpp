@@ -96,6 +96,11 @@ public:
 	{
 		return Vector3f(x * v.x, y * v.y, z * v.z);
 	}
+
+	Vector3f operator/(const Vector3f& v) const {
+		return Vector3f(x / v.x, y / v.y, z / v.z);
+	}
+
 	Vector3f operator-(const Vector3f& v) const
 	{
 		return Vector3f(x - v.x, y - v.y, z - v.z);
@@ -138,6 +143,7 @@ public:
 	friend Vector3f operator-(float c, const Vector3f& v) {
 		return Vector3f(c - v.x, c - v.y, c - v.z);
 	}
+
 
 	// ************************* vector operations ends ***********************
 
