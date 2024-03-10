@@ -1,3 +1,4 @@
+#pragma once
 #include "global.hpp"
 #include "Vector.hpp"
 
@@ -9,7 +10,7 @@ public:
 	std::string name;
 	int width = 0;
 	int height = 0;
-	std::vector<Vector3f> rgb;			// texture rgb, each in range [0, 1]
+	std::vector<Vector3f> rgb;
 
 	Vector3f getRGBat(float u, float v) {
 		if (width == 0 && height == 0) {

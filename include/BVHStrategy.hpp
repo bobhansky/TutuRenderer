@@ -18,7 +18,6 @@ class BVHStrategy : public IIntersectStrategy {
 		float distance = (lightPos - orig).norm();
 		
 		return ShadowHelper(sce.BVHaccelerator->getNode(), orig, raydir, distance);
-		
 	}
 
 	float ShadowHelper(BVHNode* node, const Vector3f& rayOrig, const Vector3f& rayDir, float dis) {

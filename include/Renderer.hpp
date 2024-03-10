@@ -21,24 +21,16 @@
 #include "BoundBox.hpp"
 #include "BVHStrategy.hpp"
 #include "BaseInterStrategy.hpp"
+#include "Texture.hpp"
 
 
-bool PRINT = false;			// debug helper
-int SPP = 512;
-float SPP_inv = 1.f / SPP;
-float Russian_Roulette = 0.78f;
 
-#define EXPEDITE true			// BVH to expedite intersection
-#define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
-#define N_THREAD 20 
-#define GAMMA_COORECTION 
-#define GAMMA_VAL 0.78f
 
 
 // thread argument
 // 12/23/2023: unknown reason, if I put start and end inside this arg struct
 // instead of passing them as thread function parameters like Im doing now
-// some of upper img is not rendered 
+// some of upper img is not rendered  
 struct Thread_arg {
 	// ul, delta_v  delta_h  g->rgb  eyePos
 	const Vector3f* ul;
@@ -46,7 +38,7 @@ struct Thread_arg {
 	const Vector3f* delta_h;
 	const Vector3f* c_off_h;
 	const Vector3f* c_off_v;
-	std::vector<Vector3i>* rgb_array;
+	Texture *output;
 	const Vector3f* eyePos;
 	int Ncol;
 	Renderer* r;
@@ -136,7 +128,7 @@ public:
 				&delta_h,
 				&c_off_h,
 				&c_off_v,
-				&g->rgb,
+				&g->output,
 				&eyePos,
 				g->width,
 				this
@@ -150,7 +142,7 @@ public:
 				&delta_h,
 				&c_off_h,
 				&c_off_v,
-				&g->rgb,
+				&g->output,
 				&eyePos,
 				g->width,
 				this
@@ -173,8 +165,8 @@ public:
 				if (x == 40 && y == 66) {
 					PRINT = true;
 				}
-
-				Vector3i& color = g->rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
+				
+				Vector3f& color = g->output.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
 				Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
 				Vector3f rayDir;
@@ -198,19 +190,7 @@ public:
 				res = res * SPP_inv;
 
 				PRINT = false;
-
-#ifdef GAMMA_COORECTION
-				// gamma correction
-				color.x = 255 * pow(clamp(0, 1, res.x), 0.6f);
-				color.y = 255 * pow(clamp(0, 1, res.y), 0.6f);
-				color.z = 255 * pow(clamp(0, 1, res.z), 0.6f);
-#endif
-
-#ifndef GAMMA_COORECTION
-				color.x = 255 * clamp(0, 1, res.x);
-				color.y = 255 * clamp(0, 1, res.y);
-				color.z = 255 * clamp(0, 1, res.z);
-#endif // !GAMMA_COORECTION
+				color = res;
 			}
 
 			showProgress((float)y / g->height);
@@ -240,21 +220,21 @@ public:
 		if (!inter.intersected)		return g->bkgcolor;
 		// if ray hit emissive object, return the L_o
 		if (inter.mtlcolor.hasEmission()) {
-			if(depth == 0)
-				return inter.mtlcolor.diffuse; //inter.mtlcolor.emission;
+			//if(depth == 0)
+			//	return inter.mtlcolor.diffuse; //inter.mtlcolor.emission;
 			return inter.mtlcolor.emission;
 		}
 		
 		// **************** TEXUTRE ********************
 		// if diffuse texture is activated, change mtlcolor.diffuse to texture data
-		if (! FLOAT_EQUAL(-1.f, inter.textureIndex) && !FLOAT_EQUAL(-1.f, inter.textPos.x) 
+		if (! FLOAT_EQUAL(-1.f, inter.diffuseIndex) && !FLOAT_EQUAL(-1.f, inter.textPos.x) 
 			&& !FLOAT_EQUAL(-1.f, inter.textPos.y)) {
-			if (g->textures.size() <= inter.textureIndex) {
+			if (g->diffuseMaps.size() <= inter.diffuseIndex) {
 				std::cout << 
 					"\ninter.textureIndex is greater than texuture.size()\nImport texture files in config.txt \n";
-				exit(0);
+				exit(1);
 				}
-				inter.mtlcolor.diffuse = g->textures.at(inter.textureIndex)
+				inter.mtlcolor.diffuse = g->diffuseMaps.at(inter.diffuseIndex)
 					.getRGBat(inter.textPos.x, inter.textPos.y);
 		}
 		// if do shading with normal map
@@ -298,7 +278,6 @@ public:
 					Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
 
 					dir_illu = L_i * f_r * cos_theta * cos_theta_prime / (dis2 * light_pdf);
-
 				}
 			}
 		}
@@ -329,7 +308,7 @@ public:
 			// 3/6/2024 22:30    
 			// denoising hack
 			// pdf < 0.0xx is very unlikely. this hack is still not physically true.
-			if (pdf < 0.02f) return dir_illu;
+			if (pdf < 0.03f) return dir_illu;
 			if (pdf > 1) pdf = 1;
 			
 
@@ -463,7 +442,7 @@ public:
 			nDir = normalized(nDir);
 
 			float deltaU1 = t->uv1.x - t->uv0.x;
-			float deltaV1 = t->uv1.y - t->uv1.y;
+			float deltaV1 = t->uv1.y - t->uv0.y;
 
 			float deltaU2 = t->uv2.x - t->uv0.x;
 			float deltaV2 = t->uv2.y - t->uv0.y;
@@ -503,6 +482,10 @@ public:
 		default:
 			break;
 		}
+
+	}
+
+	void textureModify(Intersection& inter) {
 
 	}
 
@@ -598,22 +581,23 @@ public:
 /// <param name="threadID"></param>
 /// <param name="s">start row</param>
 /// <param name="e">end row exclusive</param>
-void sub_render(Thread_arg* arg, int threadID, int s, int e) {
+void sub_render(Thread_arg* a, int threadID, int s, int e) {
+	Thread_arg arg = *a;
 
-	const Vector3f ul = *arg->ul;
-	const Vector3f delta_v = *arg->delta_v;
-	const Vector3f delta_h = *arg->delta_h;
-	const Vector3f c_off_h = *arg->c_off_h;
-	const Vector3f c_off_v = *arg->c_off_v;
-	std::vector<Vector3i>* rgb_array = arg->rgb_array;
-	const Vector3f eyePos = *arg->eyePos;
-	int Ncol = arg->Ncol;
-	Renderer *r = arg->r;
+	const Vector3f ul = *arg.ul;
+	const Vector3f delta_v = *arg.delta_v;
+	const Vector3f delta_h = *arg.delta_h;
+	const Vector3f c_off_h = *arg.c_off_h;
+	const Vector3f c_off_v = *arg.c_off_v;
+	std::vector<Vector3f>* rgb_array = &(arg.output->rgb);
+	const Vector3f eyePos = *arg.eyePos;
+	int Ncol = arg.Ncol;
+	Renderer *r = arg.r;
 	PPMGenerator* g = r->g;
 
 	for (int y = s; y < e; y++) {
 		for (int x = 0; x < Ncol; x++) {
-			Vector3i& color = rgb_array->at(g->getIndex(x, y));
+			Vector3f& color = rgb_array->at(g->getIndex(x, y));
 			Vector3f rayDir = { 0,0,0 };
 			Vector3f pixelPos = ul + x * delta_h + y * delta_v + c_off_v + c_off_v;
 			rayDir = normalized((pixelPos - eyePos));
@@ -624,19 +608,7 @@ void sub_render(Thread_arg* arg, int threadID, int s, int e) {
 				res = res + r->traceRay(eyePos, rayDir, 0);
 			}
 			res = res * SPP_inv;
-#ifdef GAMMA_COORECTION
-			// gamma correction
-			color.x = 255 * pow(clamp(0, 1, res.x), GAMMA_VAL);
-			color.y = 255 * pow(clamp(0, 1, res.y), GAMMA_VAL);
-			color.z = 255 * pow(clamp(0, 1, res.z), GAMMA_VAL);
-#endif
-
-#ifndef GAMMA_COORECTION
-			color.x = 255 * clamp(0, 1, res.x);
-			color.y = 255 * clamp(0, 1, res.y);
-			color.z = 255 * clamp(0, 1, res.z);
-#endif // !GAMMA_COORECTION
-
+			color = res;
 		}
 		//showProgress((float)y / e);		// comment it out for a clean terminal
 	}

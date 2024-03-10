@@ -11,7 +11,7 @@
 #include "Vector.hpp"
 
 
-#define M_PI 3.1415926535897
+#define M_PI 3.1415926535897f
 #define EPSILON 0.005f		// be picky about it, change it to accommodate object size
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);
@@ -108,7 +108,7 @@ float degree2Radians(const float& d) {
 }
 
 // check if two float numbers are equal
-bool FLOAT_EQUAL(const float& x, const float& y) {
+inline bool FLOAT_EQUAL(const float& x, const float& y) {
 	return (fabs(x - y) < 0.00001f);
 }
 
@@ -154,6 +154,7 @@ bool existIn(std::string& ele, std::vector<std::string>& v) {
 }
 
 
+
 // get a uniformly distributed number in range [0,1)
 float getRandomFloat() {
 	// see 
@@ -191,6 +192,7 @@ Vector3f getEleIn(std::vector<Vector3f>& arr, int index) {
 	return arr.at(index);
 }
 
+// for uv, texture mapping
 Vector2f getEleIn(std::vector<Vector2f>& arr, int index) {
 	if (index >= arr.size() || index < 0) {
 		throw std::runtime_error(index + " is out of bound: array has size: " + arr.size());

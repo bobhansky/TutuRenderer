@@ -69,7 +69,7 @@ public:
 					// u = 0.5 + (theta / (2.f * M_PI));  // 0.5 + [-0.5, 0.5]	  then if theta == 0, it is the middle point in width
 
 					inter.textPos = Vector2f(u, v);
-					inter.textureIndex = this->textureIndex;
+					inter.diffuseIndex = this->textureIndex;
 					inter.normalMapIndex = normalMapIndex;
 				}
 				return true;
@@ -111,7 +111,7 @@ public:
 				// u = 0.5 + (theta / (2.f * M_PI));  // 0.5 + [-0.5, 0.5]	  then if theta == 0, it is the middle point in width
 
 				inter.textPos = Vector2f(u, v);
-				inter.textureIndex = this->textureIndex;
+				inter.diffuseIndex = this->textureIndex;
 				inter.normalMapIndex = normalMapIndex;
 			}
 			return true;
@@ -156,32 +156,3 @@ public:
 		pdf = 1 / getArea();
 	}
 };
-
-
-
-// 3/23/2023:
-// Problem (solved somehow): doing raytracing with transparent object
-// first calculating transmittance then reflection will causes self intersection (ray travel time < 0.001)
-// and thus have a different intersection point and new reflection/refraction rays
-// which is different from first calculating reflection and then transmittance (I wonder why 
-// calculating in such order will not have self intersection)
-
-// But why sphere?  inside the sphere, it has concave?
-// 
-// 
-// solution is checking 
-// if (t1 < 0.001f) return false;
-
-
-// completely solved:
-// change to current version of contribution calculation instead
-// and we don't have to do sphere intersection edition
-
-// reason for the phenomenon in previous version
-// remains unknown
-
-
-// 3/23/2023 20:43:
-// truly solved:
-// I use the same RayOrig for transmittanceand reflection
-// so the order matters
