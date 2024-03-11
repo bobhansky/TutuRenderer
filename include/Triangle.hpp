@@ -64,6 +64,8 @@ public:
 				inter.textPos = uv0 * (1 - res.y - res.z) + uv1 * res.y + uv2 * res.z;
 				inter.diffuseIndex = this->textureIndex;
 				inter.normalMapIndex = this->normalMapIndex;
+				inter.roughnessMapIndex = roughnessMapIndex;
+				inter.metallicMapIndex = metallicMapIndex;
 			}
 			return true;
 		}

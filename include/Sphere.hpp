@@ -71,6 +71,8 @@ public:
 					inter.textPos = Vector2f(u, v);
 					inter.diffuseIndex = this->textureIndex;
 					inter.normalMapIndex = normalMapIndex;
+					inter.roughnessMapIndex = roughnessMapIndex;
+					inter.metallicMapIndex = metallicMapIndex;
 				}
 				return true;
 			}
@@ -113,6 +115,8 @@ public:
 				inter.textPos = Vector2f(u, v);
 				inter.diffuseIndex = this->textureIndex;
 				inter.normalMapIndex = normalMapIndex;
+				inter.roughnessMapIndex = roughnessMapIndex;
+				inter.metallicMapIndex = metallicMapIndex;
 			}
 			return true;
 		}

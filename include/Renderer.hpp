@@ -159,7 +159,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 40 && y == 66) {
+				if (x == 520 && y == 677) {
 					PRINT = true;
 				}
 				
@@ -223,21 +223,8 @@ public:
 		}
 		
 		// **************** TEXUTRE ********************
-		// if diffuse texture is activated, change mtlcolor.diffuse to texture data
-		if (! FLOAT_EQUAL(-1.f, inter.diffuseIndex) && !FLOAT_EQUAL(-1.f, inter.textPos.x) 
-			&& !FLOAT_EQUAL(-1.f, inter.textPos.y)) {
-			if (g->diffuseMaps.size() <= inter.diffuseIndex) {
-				std::cout << 
-					"\ninter.textureIndex is greater than texuture.size()\nImport texture files in config.txt \n";
-				exit(1);
-				}
-				inter.mtlcolor.diffuse = g->diffuseMaps.at(inter.diffuseIndex)
-					->getRGBat(inter.textPos.x, inter.textPos.y);
-		}
-		// if do shading with normal map
-		if (inter.normalMapIndex != -1) {
-			changeNormalDir(inter);
-		}
+		textureModify(inter);
+		
 		// **************** TEXUTRE ENDS ****************
 
 
@@ -483,7 +470,43 @@ public:
 	}
 
 	void textureModify(Intersection& inter) {
+		// DIFFUSE
+		if (!FLOAT_EQUAL(-1.f, inter.diffuseIndex)) {
+			if (g->diffuseMaps.size() <= inter.diffuseIndex) {
+				std::cout <<
+					"\ninter.diffuseIndex is greater than diffuseTexuture.size()\nImport texture files in config.txt \n";
+				exit(1);
+			}
+			inter.mtlcolor.diffuse = g->diffuseMaps.at(inter.diffuseIndex)
+				->getRGBat(inter.textPos.x, inter.textPos.y);
+		}
+		// NORMAL
+		if (inter.normalMapIndex != -1) {
+			changeNormalDir(inter);
+		}
 
+		// ROUGHNESS
+		if (inter.roughnessMapIndex != -1) {
+			if (g->roughnessMaps.size() <= inter.diffuseIndex) {
+				std::cout <<
+					"\ninter.roughnessIndex is greater than roughness_texture.size()\nImport texture files in config.txt \n";
+				exit(1);
+			}
+			inter.mtlcolor.roughness = g->roughnessMaps.at(inter.roughnessMapIndex)
+				->getRGBat(inter.textPos.x, inter.textPos.y).x;
+			
+		}
+
+		// METALLIC
+		if (inter.metallicMapIndex != -1) {
+			if (g->metallicMaps.size() <= inter.metallicMapIndex) {
+				std::cout <<
+					"\ninter.metallicIndex is greater than metallic_texture.size()\nImport texture files in config.txt \n";
+				exit(1);
+			}
+			inter.mtlcolor.metallic = g->metallicMaps.at(inter.metallicMapIndex)
+				->getRGBat(inter.textPos.x, inter.textPos.y).x;
+		}
 	}
 
 	// sample all the emissive object to get one point on their surface,
