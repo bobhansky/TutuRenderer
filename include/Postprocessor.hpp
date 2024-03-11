@@ -8,10 +8,10 @@
 #include "Texture.hpp"
 
 #define STRENGTH 2
-#define GAUSSIANLOOP 2
-#define KERNELSIZE 20
-#define STDDEV 60.f
-#define EXPOSURE 1.f
+#define GAUSSIANLOOP 1
+#define KERNELSIZE 10
+#define STDDEV 30.f
+#define EXPOSURE 1.0f
 
 class Postprocessor {
 public:
@@ -27,6 +27,11 @@ public:
 	}
 
 	Texture performPostProcess() {
+#ifdef HDR_ONLY
+		return getHDRtexture(source);
+#endif // HDR_ONLY
+
+
 		// 1. bloom: 
 		//	1.1 extract emmisive texture first
 		renderTextures[1] = getEmmisiveTexture(&renderTextures[0]);
@@ -43,10 +48,10 @@ public:
 		// return renderTextures[index];		// return blured emmisive texture
 		renderTextures[index] = add(&renderTextures[0], &renderTextures[index]);	// bloom 
 
-#ifndef HDR
-		return renderTextures[index];
+#ifndef HDR_BLOOM
+		return renderTextures[index];	// bloom only
 #endif // !HDR
-#ifdef HDR
+#ifdef HDR_BLOOM
 		return getHDRtexture(&renderTextures[index]);
 #endif
 		
@@ -130,11 +135,12 @@ public:
 				float V = (float)y / h;
 				Vector3f col = src.getRGBat(clamp(0, 0.999f, U), clamp(0, 0.999f, V));
 				if (col.norm() > 3.f) {	// if emmisive pixel
-					float mx = col.x > col.y ? col.x : col.y;
+					float mx = col.x > col.y ? col.x : col.y;	// should not rescale it, try find a better bloom way
 					mx = mx > col.z ? mx : col.z;
 					color.x = rescale(col.x, mx, 0.f, STRENGTH, 0.f);
 					color.y = rescale(col.y, mx, 0.f, STRENGTH, 0.f);
 					color.z = rescale(col.z, mx, 0.f, STRENGTH, 0.f);
+					//color = col;
 				}
 			}
 		}
@@ -165,7 +171,6 @@ public:
 	// to the expected [0.0, 1.0] range known as low dynamic range without losing too much detail, 
 	// often accompanied with a specific stylistic color balance.
 	Texture getHDRtexture(Texture* img) {
-		float gamma = 2.2f;
 		Texture	src = *img;
 		Texture dst;
 		dst.width = src.width;

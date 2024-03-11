@@ -21,6 +21,8 @@ public:
 	Vector2f textPos;	// texture coordinates if any	(-1, -1) means no texture
 	int diffuseIndex = -1;
 	int normalMapIndex = -1;
+	int roughnessMapIndex = -1;
+	int metallicMapIndex = -1;
 
 
 	Material mtlcolor;

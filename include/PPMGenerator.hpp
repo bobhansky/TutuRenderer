@@ -19,7 +19,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 128;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -29,7 +29,8 @@ float Russian_Roulette = 0.78f;
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
 
-#define HDR
+//#define HDR_ONLY	// it would disable HDR_BLOOM
+#define HDR_BLOOM
 
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
@@ -173,7 +174,9 @@ public:
 
 	// load triangles from OBJ_Loader
 	// 4/24/2023  22:43    try edit texture on   mtlcolor
-	void loadObj(objl::Loader& loader, Material& mtlcolor, int textureIndex = -1, int bumpMapIndex= -1) {
+	void loadObj(objl::Loader& loader, Material& mtlcolor, int textureIndex = -1, 
+		int bumpMapIndex= -1, int roughnessIndex = -1, int metallicIndex = -1) {
+
 		for (auto m : loader.LoadedMeshes) {
 			for (int i = 0; i < m.Vertices.size(); i += 3) {
 				// each triangle
@@ -654,7 +657,7 @@ public:
 		distmin = std::stof(t6);
 		}
 
-		// color texture
+		// diffuse/albedo texture
 		else if (!key.compare("texture")) {
 			int size0 = diffuseMaps.size();
 			checkFin(); fin >> a;
@@ -680,7 +683,7 @@ public:
 			int size0 = normalMaps.size();
 			checkFin(); fin >> a;
 			loadTexture(a.c_str(), normalMaps);
-			isTextureOn = true;		// replace mtlcolor's diffuse term with texture data
+			isTextureOn = true;	
 
 			int size1 = normalMaps.size();
 			// if a(the name of the texture) is loaded before
@@ -708,6 +711,48 @@ public:
 				}
 			}
 		}
+
+		// roughness texture
+		else if (!key.compare("roughnessTexture")) {
+			int size0 = roughnessMaps.size();
+			checkFin(); fin >> a;
+			loadTexture(a.c_str(), roughnessMaps);
+			isTextureOn = true;		
+
+			int size1 = roughnessMaps.size();
+			// if a(the name of the texture) is loaded before
+			// then point the texture index to it in the array
+			if (size0 == size1) {
+				for (int i = 0; i < roughnessMaps.size(); i++) {
+					if (!roughnessMaps.at(i)->name.compare(a)) {
+						roughnessIndex = i;
+						break;
+					}
+				}
+			}
+			else roughnessIndex = size1 - 1;
+			}
+
+		// metallic texture
+		else if (!key.compare("metallicTexture")) {
+			int size0 = metallicMaps.size();
+			checkFin(); fin >> a;
+			loadTexture(a.c_str(), metallicMaps);
+			isTextureOn = true;
+
+			int size1 = metallicMaps.size();
+			// if a(the name of the texture) is loaded before
+			// then point the texture index to it in the array
+			if (size0 == size1) {
+				for (int i = 0; i < metallicMaps.size(); i++) {
+					if (!metallicMaps.at(i)->name.compare(a)) {
+						metallicIndex = i;
+						break;
+					}
+				}
+			}
+			else metallicIndex = size1 - 1;
+			}
 
 		// read object
 		else if (existIn(key, objType)) {
