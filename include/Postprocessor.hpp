@@ -48,9 +48,9 @@ public:
 		// return renderTextures[index];		// return blured emmisive texture
 		renderTextures[index] = add(&renderTextures[0], &renderTextures[index]);	// bloom 
 
-#ifndef HDR_BLOOM
+#ifdef BLOOM_ONLY
 		return renderTextures[index];	// bloom only
-#endif // !HDR
+#endif
 #ifdef HDR_BLOOM
 		return getHDRtexture(&renderTextures[index]);
 #endif

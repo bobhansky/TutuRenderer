@@ -19,7 +19,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 128;
+int SPP = 4;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -30,7 +30,8 @@ float Russian_Roulette = 0.78f;
 #define GAMMA_VAL 0.78f
 
 //#define HDR_ONLY	// it would disable HDR_BLOOM
-#define HDR_BLOOM
+//#define HDR_BLOOM
+#define BLOOM_ONLY
 
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
