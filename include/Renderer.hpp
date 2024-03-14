@@ -159,7 +159,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 520 && y == 677) {
+				if (x == 682 && y == 418) {
 					PRINT = true;
 				}
 				
