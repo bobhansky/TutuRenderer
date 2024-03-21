@@ -39,7 +39,6 @@ struct Thread_arg {
 	const Vector3f* eyePos;
 	int Ncol;
 	Renderer* r;
-	
 };
 
 void sub_render(Thread_arg*, int, int, int);
@@ -159,7 +158,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 682 && y == 418) {
+				if (x == 234 && y == 648) {
 					PRINT = true;
 				}
 				
@@ -222,21 +221,21 @@ public:
 			return inter.mtlcolor.emission;
 		}
 		
-		// **************** TEXUTRE ********************
+		// TEXTURE
 		textureModify(inter);
-		
-		// **************** TEXUTRE ENDS ****************
 
 
 		// if UNLIT material, return diffuse
 		if (inter.mtlcolor.mType == UNLIT) return inter.mtlcolor.diffuse;
 
+		if (inter.mtlcolor.mType == SPECULAR_REFLECTIVE)
+			return calcForMirror(origin, dir, inter, depth);
+		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE)
+			return calcForRefractive(origin, dir, inter, depth);
+
 		Vector3f dir_illu(0.f);
 		Vector3f indir_illu(0.f);
 
-		if (inter.mtlcolor.mType == SPECULAR_REFLECTIVE)
-			return calcForMirror(origin, dir, inter, depth+1);
-		
 		// ****** Direct illumination
 		float light_pdf;
 		Intersection light_inter;
@@ -564,7 +563,7 @@ public:
 	/// <param name="depth"> ray bouncing depth</param>
 	/// <returns></returns>
 	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir,  Intersection& inter, int depth) {
-		if (depth > 9) return 0;	// 2 mirror reflect forever causing stack overflow
+		if (depth > 6) return 0;	// 2 mirror reflect forever causing stack overflow
 		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
 
 		p_to_x_dir = normalized(p_to_x_dir);
@@ -573,22 +572,75 @@ public:
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
 		if (x_inter.intersected ) {
-			float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
+			//float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
 
 			Vector3f wo = -dir;
 			float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
 			// BRDF has reciprocity
-			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
+			//Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
 
 			// in case that pdf is too small and generate white img
 			if (pdf == 0.f) return { 0,0,0 };
 			if (pdf > 1.f) pdf = 1.f;
 
 			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth+1);
-			return res * f_r * cos_pnormal_xdir / pdf ;
+			return res; // * f_r * cos_pnormal_xdir / pdf;
+		}
+		return 0;
+	}
+
+	/// <summary>
+	/// special case for perfect refraction
+	/// </summary>
+	/// <param name="origin"></param>
+	/// <param name="dir"></param>
+	/// <param name="inter"></param>
+	/// <param name="depth"></param>
+	/// <returns></returns>
+	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
+		if (depth > 6) return 0;
+
+		Vector3f N = inter.nDir;
+
+		Vector3f wo = -dir;
+		float eta_i = g->eta;
+		float eta_t = inter.mtlcolor.eta;
+		if (wo.dot(N) > 0) {
+		}
+		else {	// ray is inside the obj, then swap
+			eta_i += eta_t;
+			eta_t = eta_i - eta_t;
+			eta_i = eta_i - eta_t;
+			N = -N;
 		}
 
-		return 0;
+		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(wo, N, eta_i, eta_t);
+		p_to_x_dir = normalized(p_to_x_dir);
+		float pdf = inter.mtlcolor.pdf(p_to_x_dir, wo, N, eta_i, eta_t);
+		Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, N, eta_i);
+
+		if (pdf < 0.03f) return 0;
+		if (pdf > 1) pdf = 1;
+
+		// total internal reflection
+		if (p_to_x_dir.norm() == 0.f) {
+			p_to_x_dir = getReflectionDir(dir, N);
+			pdf = 1;
+		}
+
+		Vector3f rayOrig = inter.pos;
+		float cos_pnormal_xdir = 0;
+		if (p_to_x_dir.dot(N) > 0) {	// if p_to_x is reflection ray
+			rayOrig = rayOrig + N * EPSILON;
+			cos_pnormal_xdir = N.dot(p_to_x_dir);
+		}
+		else {	// if p_to_x is refraction ray
+			rayOrig = rayOrig - N * EPSILON;
+			cos_pnormal_xdir = (-N).dot(p_to_x_dir);	// ?
+		}
+		Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
+
+		return res; //* cos_pnormal_xdir * f_r / pdf;
 	}
 };
 
