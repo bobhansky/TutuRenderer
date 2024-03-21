@@ -36,7 +36,7 @@ public:
 
 		// if the ray is parallel to the surface, then no inter
 		// I CONSIDER undersurface ray, so it's not >=
-		if (dir.dot(normal) == 0.f)
+		if (FLOAT_EQUAL( dir.dot(normal), 0.f))
 			return false;
 
 		Vector3f rightVec(S2.dot(E2), S1.dot(S),S2.dot(dir));	// right handside part in my note games101
@@ -52,12 +52,10 @@ public:
 			inter.t = res.x;
 			inter.pos = orig + inter.t * dir;
 			inter.mtlcolor = this->mtlcolor;
-			// also get the interpolated normal direction
-			// must normalize this interpolated direction!!!   2/19/2023 by bokitian
-			inter.nDir = normalized((n0 * (1 - res.y - res.z)) + n1 * res.y + n2 * res.z);
-			inter.nDir = normalized(crossProduct(E1, E2));
+			inter.nDir = normalized((n0 * (1 - res.y - res.z)) + n1 * res.y + n2 * res.z);	// smooth shading
 
-			// if this triangle's texture is activated, then do interpolation to 
+			// inter.nDir = normalized(crossProduct(E1, E2));	// flat shading
+
 			// calculate texture coordinates
 			if (isTextureActivated)
 			{

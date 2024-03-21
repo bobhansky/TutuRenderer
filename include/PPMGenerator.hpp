@@ -19,11 +19,11 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 4;
+int SPP = 16;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
-#define EXPEDITE true			// BVH to expedite intersection
+#define EXPEDITE true		// BVH to expedite intersection
 #define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
 #define N_THREAD 20
 #define GAMMA_COORECTION 
@@ -253,17 +253,27 @@ public:
 				float Y = m.Vertices[i].Position.Y;
 				float Z = m.Vertices[i].Position.Z;
 
+				float NX = m.Vertices[i].Normal.X;
+				float NY = m.Vertices[i].Normal.Y;
+				float NZ = m.Vertices[i].Normal.Z;
+
 				if (axis == 0) {
 					m.Vertices[i].Position.Y = cos(rad) * Y - sin(rad) * Z;
 					m.Vertices[i].Position.Z = sin(rad) * Y + cos(rad) * Z;
+					m.Vertices[i].Normal.Y = cos(rad) * NY - sin(rad) * NZ;
+					m.Vertices[i].Normal.Z = sin(rad) * NY + cos(rad) * NZ;
 				}
 				else if (axis == 1) {
 					m.Vertices[i].Position.X = cos(rad) * X + sin(rad) * Z;
 					m.Vertices[i].Position.Z = -sin(rad) * X + cos(rad) * Z;
+					m.Vertices[i].Normal.X = cos(rad) * NX + sin(rad) * NZ;
+					m.Vertices[i].Normal.Z = -sin(rad) * NX + cos(rad) * NZ;
 				}
 				else if (axis == 2) {
 					m.Vertices[i].Position.X = cos(rad) * X - sin(rad) *Y;
 					m.Vertices[i].Position.Y = sin(rad) * X + cos(rad) * Y;
+					m.Vertices[i].Normal.X = cos(rad) * NX - sin(rad) * NY;
+					m.Vertices[i].Normal.Y = sin(rad) * NX + cos(rad) * NY;
 				}
 
 			}
@@ -629,10 +639,15 @@ public:
 
 		else if (key.compare("SPECULAR_REFLECTIVE") == 0) {
 			// MICROFACET Odr Odg Odb alpha eta roughness metallic
-
 			mtlcolor.mType = SPECULAR_REFLECTIVE;
+		}
 
-			}
+		else if (key.compare("PERFECT_REFRACTIVE") == 0) {
+			mtlcolor.mType = PERFECT_REFRACTIVE;
+			std::string t0;
+			checkFin(); fin >> t0;
+			mtlcolor.eta = std::stof(t0);
+		}
 
 
 

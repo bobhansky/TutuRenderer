@@ -272,7 +272,7 @@ Vector3f getRefractionDir(const Vector3f& incident, const Vector3f& normal, floa
 	// check total internal reflection case:
 	// if it is the case, return 0 0 0, meanning no refraction dir
 	if (sin_theta_i > (eta_t / eta_i)) 
-		return Vector3f();
+		return Vector3f(0);
 
 	float cos_theta_t = sqrtf(1 - powf(sin_theta_t, 2));
 

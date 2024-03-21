@@ -8,6 +8,7 @@
 enum MaterialType {
 	LAMBERTIAN,
 	SPECULAR_REFLECTIVE,
+	PERFECT_REFRACTIVE,
 	MICROFACET,	// Cook Torrance Microfacet model  with GGX dist
 	UNLIT
 };
@@ -111,6 +112,11 @@ public:
 				return 1;
 				break;
 			}
+
+			case PERFECT_REFRACTIVE:{
+				return 1;
+				break;
+			}
 			
 			default:
 				return Vector3f(0.f);
@@ -121,7 +127,9 @@ public:
 
 	// sample a direction on the hemisphere
 	// wi: incident dir, pointing outward
-	Vector3f sampleDirection(const Vector3f& wi, const Vector3f& N) {
+	Vector3f sampleDirection(const Vector3f& wi, const Vector3f& N, 
+		const float eta_i = 0.f, const float eta_t = 0.f) {
+
 		switch (mType)
 		{
 		case MICROFACET: 
@@ -171,6 +179,15 @@ public:
 
 		case SPECULAR_REFLECTIVE: {
 			return getReflectionDir(-wi, N);
+			break;
+		}
+		case PERFECT_REFRACTIVE: {
+			float F = fresnel(-wi, N, eta_i, eta);
+			if (getRandomFloat() < F) {
+				return getReflectionDir(-wi, N); 
+			}
+			else return getRefractionDir(-wi, N, eta_i, eta_t);
+
 			break;
 		}
 		default: {
@@ -232,8 +249,8 @@ public:
 		
 	}
 
-
-	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) const {
+	// wo: -camera dir   wi: sampled dir
+	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float eta_i = 0.f, float eta_t = 0.f) const {
 		switch (mType)
 		{
 		case LAMBERTIAN: {
@@ -257,6 +274,15 @@ public:
 		}
 		case SPECULAR_REFLECTIVE: {
 			return 1;
+			break;
+		}
+
+		case PERFECT_REFRACTIVE: {
+			float F = fresnel(-wi, N, eta_i, this->eta);
+			if (wi.dot(N) < 0)
+				return 1 - F;
+			
+			return F;
 			break;
 		}
 

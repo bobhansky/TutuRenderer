@@ -821,6 +821,7 @@ namespace objl
             if (noNormal)
                 // 4/25/2023  bobhansky:
                 // original: Vector3 A = oVerts[0].Position - oVerts[1].Position;
+                // changed to: Vector3 A = oVerts[1].Position - oVerts[0].Position;
 
             {
                 Vector3 A = oVerts[1].Position - oVerts[0].Position;        // changed
