@@ -20,9 +20,6 @@
 edit 
 >int SPP = 1;
 
-in Renderer.hpp under include folder to set different sample per pixel   
- ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/4.png)
-
 
 
 # Sample Result
