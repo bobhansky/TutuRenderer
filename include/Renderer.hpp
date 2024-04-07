@@ -206,6 +206,8 @@ public:
 	// -dir is the wo, trace a ray into the scene and update intersection
 	// use Russian Roulette to terminate
 	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth) {
+		if (depth > MAX_DEPTH) return 0;
+
 		Intersection inter;
 		// loop through all the objects in the scene and find the nearest intersection
 		// const Class &: const lvalue reference
@@ -267,7 +269,7 @@ public:
 
 		// ****** Indirect Illumination
 		
-		// test RussianRoulette first
+		// test RussianRoulette
 		if (getRandomFloat() > Russian_Roulette)
 			return dir_illu;
 
@@ -563,7 +565,7 @@ public:
 	/// <param name="depth"> ray bouncing depth</param>
 	/// <returns></returns>
 	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir,  Intersection& inter, int depth) {
-		if (depth > 6) return 0;	// 2 mirror reflect forever causing stack overflow
+		if (depth > MAX_DEPTH) return 0;	// 2 mirror reflect forever causing stack overflow
 		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
 
 		p_to_x_dir = normalized(p_to_x_dir);
@@ -598,7 +600,7 @@ public:
 	/// <param name="depth"></param>
 	/// <returns></returns>
 	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
-		if (depth > 6) return 0;
+		if (depth > MAX_DEPTH) return 0;
 
 		Vector3f N = inter.nDir;
 
