@@ -11,7 +11,7 @@
 #define GAUSSIANLOOP 1
 #define KERNELSIZE 10
 #define STDDEV 30.f
-#define EXPOSURE 1.0f
+#define EXPOSURE 1.5f
 
 class Postprocessor {
 public:

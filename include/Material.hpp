@@ -6,7 +6,7 @@
 
 
 enum MaterialType {
-	LAMBERTIAN,
+	LAMBERTIAN,	// cosine weighted
 	SPECULAR_REFLECTIVE,
 	PERFECT_REFRACTIVE,
 	MICROFACET,	// Cook Torrance Microfacet model  with GGX dist
@@ -149,6 +149,7 @@ public:
 		}
 
 		case LAMBERTIAN: {
+			// cosine weighted
 			// **** inverse transformation sampling
 			// pbrt 13.6.1  *important
 			// https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/2D_Sampling_with_Multidimensional_Transformations
@@ -162,7 +163,7 @@ public:
 			// 2. convert it to world corrdinate
 			float r1 = getRandomFloat();
 			float r2 = getRandomFloat();
-			float cosTheta = r1;
+			float cosTheta = sqrt(r1);
 			float phi = 2 * M_PI * r2;
 
 			Vector3f dir;
