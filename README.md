@@ -1,4 +1,4 @@
-# PathTracing
+![space](https://github.com/bobhansky/PathTracing/assets/59004766/8a6571a5-6719-44df-b30a-fd628b0de355)# PathTracing
 
 ## Usage
 
@@ -40,10 +40,11 @@ right: Path Tracing
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/2glossy.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/mirrorBall1600.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1600_512spp.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/1600.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_512_bloomHDR.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_w_512_bloomHDR.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_w_1024.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/wall.png)  
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/256_wall.png)
 
