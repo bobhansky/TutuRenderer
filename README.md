@@ -1,4 +1,4 @@
-![space](https://github.com/bobhansky/PathTracing/assets/59004766/8a6571a5-6719-44df-b30a-fd628b0de355)# PathTracing
+# PathTracing
 
 ## Usage
 
