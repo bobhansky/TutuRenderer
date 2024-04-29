@@ -38,6 +38,7 @@ public:
 		// I CONSIDER undersurface ray, so it's not >=
 		if (FLOAT_EQUAL( dir.dot(normal), 0.f))
 			return false;
+		
 
 		Vector3f rightVec(S2.dot(E2), S1.dot(S),S2.dot(dir));	// right handside part in my note games101
 		if (S1.dot(E1) == 0.f) return false;
