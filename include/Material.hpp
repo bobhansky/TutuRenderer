@@ -101,15 +101,16 @@ public:
 				fr = clamp(0, 1, fr);	
 				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
 				Vector3f ref_term =  fr * 1;		// or 1
+				return ref_term;	// used for MIS testing
 				return diffuse_term + ref_term;
-				
-				
+						
 				//************** Reflection term ends ********************
 			}
 
 			case SPECULAR_REFLECTIVE:
 			{
-				return 1;
+				// https://www.youtube.com/watch?v=sg2xdcB8M3c
+				return 1/N.dot(wi);
 				break;
 			}
 
@@ -136,7 +137,6 @@ public:
 		{
 			// https://zhuanlan.zhihu.com/p/78146875
 			// https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
-
 			float r0 = getRandomFloat();
 			float r1 = getRandomFloat();
 			float a2 = roughness * roughness *roughness* roughness;

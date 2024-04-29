@@ -19,7 +19,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 32;
+int SPP = 16;
 float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
@@ -28,12 +28,13 @@ float Russian_Roulette = 0.78f;
 #define N_THREAD 20
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
-#define MIN_DEPTH 5
 #define MAX_DEPTH 7
 
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
 //#define BLOOM_ONLY
+
+#define MIS	0	// Multiple Importance Sampling
 
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
@@ -812,9 +813,8 @@ public:
 				color.x = 255 * pow(clamp(0, 1, color.x), GAMMA_VAL);
 				color.y = 255 * pow(clamp(0, 1, color.y), GAMMA_VAL);
 				color.z = 255 * pow(clamp(0, 1, color.z), GAMMA_VAL);
-#endif
 
-#ifndef GAMMA_COORECTION
+#else
 				color.x = 255 * clamp(0, 1, color.x);
 				color.y = 255 * clamp(0, 1, color.y);
 				color.z = 255 * clamp(0, 1, color.z);
