@@ -35,7 +35,7 @@ struct Thread_arg {
 	const Vector3f* delta_h;
 	const Vector3f* c_off_h;
 	const Vector3f* c_off_v;
-	Texture *output;
+	Texture* output;
 	const Vector3f* eyePos;
 	int Ncol;
 	Renderer* r;
@@ -59,7 +59,7 @@ public:
 
 		if (EXPEDITE) interStrategy = new BVHStrategy();
 		else interStrategy = new BaseInterStrategy();
-		
+
 		g->scene.initializeBVH();
 	}
 
@@ -115,10 +115,10 @@ public:
 		// trace ray: cast a ray from eyePos through each pixel
 		// try to get the tNear and its intersection properties
 
-		#ifdef MULTITHREAD
+#ifdef MULTITHREAD
 		int rowPerthd = g->height / N_THREAD;
 		std::thread thds[N_THREAD];
-	
+
 		for (int i = 0; i < N_THREAD - 1; i++) {
 			Thread_arg arg{
 				&ul,
@@ -145,23 +145,23 @@ public:
 				g->width,
 				this
 		};
-		thds[N_THREAD-1] = std::thread(sub_render, &arg_end, N_THREAD-1, (N_THREAD - 1) * rowPerthd, g->height);
+		thds[N_THREAD - 1] = std::thread(sub_render, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
 
-		for (int i = N_THREAD-1; i >= 0; i--) {
+		for (int i = N_THREAD - 1; i >= 0; i--) {
 			thds[i].join();
 		}
 
-		
+
 		// single thread
-		#else
+#else
 		for (int y = 0; y < g->height; y++) {
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 581 && y == 615) {
+				if (x == 428 && y == 509) {
 					PRINT = true;
 				}
-				
+
 				Vector3f& color = g->output.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
 				Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
@@ -196,7 +196,7 @@ public:
 		}
 		showProgress(1.f);
 		std::cout << std::endl;
-		#endif // !
+#endif // !
 
 	}
 
@@ -204,11 +204,11 @@ public:
 	PPMGenerator* g;
 	IIntersectStrategy* interStrategy;
 	std::mutex sampleLight_mutex;
-	
+
 
 	// -dir is the wo, trace a ray into the scene and update intersection
 	// use Russian Roulette to terminate
-	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth) {
+	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth, Intersection* nxtInter = nullptr) {
 		if (depth > MAX_DEPTH) return 0;
 
 		Vector3f sampleValue = 0;
@@ -216,7 +216,8 @@ public:
 		Intersection inter;
 		// const Class &: const lvalue reference
 		// get intersection
-		interStrategy->UpdateInter(inter, this->g->scene, origin, dir);
+		if (nxtInter)	inter = *nxtInter;
+		else interStrategy->UpdateInter(inter, this->g->scene, origin, dir);
 
 		// TEXTURE
 		textureModify(inter);
@@ -228,11 +229,11 @@ public:
 		if (!inter.intersected)		return g->bkgcolor;
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
-		if (inter.mtlcolor.hasEmission() ) {
+		if (inter.mtlcolor.hasEmission()) {
 			sampleValue = sampleValue + inter.mtlcolor.emission;
 		}
 		Vector3f wo = -dir;
-		
+
 
 #if MIS
 		// ******************* direct illumination ********************
@@ -245,12 +246,12 @@ public:
 		Intersection light_inter;
 		sampleLight(light_inter, light_pdf);
 		if (!light_inter.intersected || isShadowRayBlocked(inter, light_inter.pos)) {}
-		else{
+		else {
 			Vector3f wi = light_inter.pos - inter.pos;
 			float r2 = wi.norm2();
 			wi = normalized(wi);
-			if(wi.dot(light_inter.nDir) > 0){}
-			else{
+			if (wi.dot(light_inter.nDir) > 0) {}
+			else {
 				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);	// w.r.t solid angle
 				Vector3f light_N = normalized(light_inter.nDir);
 				float cos_theta_prime = light_N.dot(-wi);
@@ -267,13 +268,13 @@ public:
 				mis_weight_l = getMisWeight(light_pdf, mat_pdf);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = light_inter.mtlcolor.emission;
-				sampleValue = sampleValue + 
+				sampleValue = sampleValue +
 					(mis_weight_l * L_i * f_r * cos_theta * cos_theta_prime / (r2 * pdfl));
 			}
 		}
 
 		// *********************** Sample BSDF ********************
-		Vector3f wi = inter.mtlcolor.sampleDirection(wo, inter.nDir);	
+		Vector3f wi = inter.mtlcolor.sampleDirection(wo, inter.nDir);
 		wi = normalized(wi);
 		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);
 		Intersection x_inter;
@@ -296,21 +297,21 @@ public:
 				mis_weight_m = getMisWeight(mat_pdf, l_pdf_transformed);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = x_inter.mtlcolor.emission;
-				if (mat_pdf < 0.03f) return sampleValue;
+				if (mat_pdf < MIN_PDF) return sampleValue;
 
 				sampleValue = sampleValue +
 					(mis_weight_m * L_i * f_r * cos_theta / mat_pdf);
 				return sampleValue;
-			} 
+			}
 			// ******************* direct illumination ENDS ********************
 			else {	// indirect illumination
-			 	if (getRandomFloat() > Russian_Roulette)
+				if (getRandomFloat() > Russian_Roulette)
 					return sampleValue;
-				Vector3f res = traceRay(rayOrig, wi, depth + 1);
+				Vector3f res = traceRay(rayOrig, wi, depth + 1, &x_inter);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
-				if (mat_pdf < 0.03f) return sampleValue;
+				if (mat_pdf < MIN_PDF) return sampleValue;
 
-				sampleValue = sampleValue + ( 1 * f_r * res * cos_theta / (mat_pdf * Russian_Roulette));
+				sampleValue = sampleValue + (1 * f_r * res * cos_theta / (mat_pdf * Russian_Roulette));
 			}
 			// 4/30/2024
 			// by experiment it doesnt always equal 1, need to verify in the future
@@ -354,7 +355,7 @@ public:
 		}
 
 		// ****** Indirect Illumination
-		
+
 		// test RussianRoulette
 		if (getRandomFloat() > Russian_Roulette)
 			return dir_illu;
@@ -365,9 +366,9 @@ public:
 
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
-		interStrategy->UpdateInter(x_inter, g->scene,rayOrig , p_to_x_dir);
+		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
 		// calculate only when inter is on a non-emissive object
-		if (x_inter.intersected  && !x_inter.mtlcolor.hasEmission() ) {
+		if (x_inter.intersected && !x_inter.mtlcolor.hasEmission()) {
 			float cos_pnormal_xdir = std::max(0.f, inter.nDir.dot(p_to_x_dir));
 
 
@@ -379,8 +380,8 @@ public:
 			// 3/6/2024 22:30    
 			// denoising hack
 			// pdf < 0.0xx is very unlikely. this hack is still not physically true.
-			if (pdf < 0.03f) return sampleValue;
-
+			if (pdf < MIN_PDF) return sampleValue;
+			//if (pdf > 1) pdf = 1;
 			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
 			indir_illu = res * f_r * cos_pnormal_xdir / (pdf * Russian_Roulette);
 		}
@@ -407,8 +408,8 @@ public:
 			Intersection p_light_inter;
 			for (auto& i : g->scene.objList) {
 				if (i->mtlcolor.hasEmission()) continue; // do not test with light avatar
-				
-				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance ) {
+
+				if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance) {
 					return true;
 				}
 			}
@@ -423,7 +424,7 @@ public:
 
 	// TBN transformation matrix to change the dir of normal
 	void changeNormalDir(Intersection& inter) {
-		Texture *nMap = g->normalMaps.at(inter.normalMapIndex);
+		Texture* nMap = g->normalMaps.at(inter.normalMapIndex);
 		Vector3f color = nMap->getRGBat(inter.textPos.x, inter.textPos.y);
 
 		switch (inter.obj->objectType)
@@ -506,7 +507,7 @@ public:
 			}
 			inter.mtlcolor.roughness = g->roughnessMaps.at(inter.roughnessMapIndex)
 				->getRGBat(inter.textPos.x, inter.textPos.y).x;
-			
+
 		}
 
 		// METALLIC
@@ -529,7 +530,7 @@ public:
 		static float totalArea = 0;
 		static bool firstimeCall = true;
 		int size = lightList.size();
-		
+
 		// if first time call it, put all the emissive object into lightList
 
 		if (firstimeCall) {
@@ -559,7 +560,7 @@ public:
 		// 3/3/2024 need a better sample method
 		int index = (int)(getRandomFloat() * (size - 1) + 0.4999f);
 		if (size == 1) index = 0;
-		
+
 		Object* lightObject = lightList.at(index);
 
 		lightObject->samplePoint(inter, pdf);
@@ -576,7 +577,7 @@ public:
 	/// <param name="inter"> ray object intersection</param>
 	/// <param name="depth"> ray bouncing depth</param>
 	/// <returns></returns>
-	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir,  Intersection& inter, int depth) {
+	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
 		if (depth > MAX_DEPTH) return 0;	// 2 mirror reflect forever causing stack overflow
 		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
 
@@ -585,7 +586,7 @@ public:
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
-		if (x_inter.intersected ) {
+		if (x_inter.intersected) {
 			// float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
 			// Vector3f wo = -dir;
 			// float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
@@ -595,7 +596,7 @@ public:
 			// if (pdf == 0.f) return { 0,0,0 };
 			// if (pdf > 1.f) pdf = 1.f;
 
-			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth+1);
+			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
 			return res; // *f_r* cos_pnormal_xdir / pdf;
 		}
 		return 0;
@@ -675,7 +676,7 @@ public:
 				if (i->mtlcolor.hasEmission()) {
 					lightList.emplace_back(i.get());
 					// without lock, sometimes problem on i->getArea(), maybe due to unique_ptr
-					totalArea += i->getArea();	
+					totalArea += i->getArea();
 				}
 			}
 			firstimeCall = false;
@@ -691,7 +692,7 @@ public:
 
 		// independent event p(a&&b) == p(a) *  p(b)
 		float area = inter.obj->getArea();
-		return  1/ (size * area);
+		return  1 / (size * area);
 	}
 };
 
@@ -715,7 +716,7 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 	std::vector<Vector3f>* rgb_array = &(arg.output->rgb);
 	const Vector3f eyePos = *arg.eyePos;
 	int Ncol = arg.Ncol;
-	Renderer *r = arg.r;
+	Renderer* r = arg.r;
 	PPMGenerator* g = r->g;
 
 	for (int y = s; y < e; y++) {
@@ -738,16 +739,16 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 		}
 		//showProgress((float)y / e);		// comment it out for a clean terminal
 	}
-	
+
 }
 
 
 float getMisWeight(float pdf, float otherPdf) {
 	// balance heuristic
-	return pdf / (pdf + otherPdf);
+	//return pdf / (pdf + otherPdf);
 
 	// power heuristic
-	return (pdf*pdf) / ((pdf + otherPdf)* (pdf + otherPdf));
+	return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
 }
 
 
