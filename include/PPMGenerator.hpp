@@ -24,8 +24,9 @@ float SPP_inv = 1.f / SPP;
 float Russian_Roulette = 0.78f;
 
 #define EXPEDITE true		// BVH to expedite intersection
-#define MULTITHREAD				// multi threads to expedite, comment it out for better ebug
+#define MULTITHREAD			// multi threads to expedite, comment it out for better ebug
 #define N_THREAD 20
+#define MIS	0				// Multiple Importance Sampling
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
 #define MAX_DEPTH 7
@@ -34,7 +35,7 @@ float Russian_Roulette = 0.78f;
 #define HDR_BLOOM
 //#define BLOOM_ONLY
 
-#define MIS	0	// Multiple Importance Sampling
+
 
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
