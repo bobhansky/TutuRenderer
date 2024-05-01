@@ -158,7 +158,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 1077 && y == 1204) {
+				if (x == 581 && y == 615) {
 					PRINT = true;
 				}
 				
@@ -184,6 +184,9 @@ public:
 					estimate = estimate + traceRay(eyeLocation, rayDir, 0);
 				}
 				estimate = estimate * SPP_inv;
+#if MIS
+				estimate = estimate * 1.f;
+#endif
 
 				PRINT = false;
 				color = estimate;
@@ -232,12 +235,13 @@ public:
 		
 
 #if MIS
+		// ******************* direct illumination ********************
 		// *********************** Sample Light ********************
-		// https://github.com/Apress/Ray-Tracing-Gems-II/tree/main
+		// https://www.youtube.com/watch?v=xrsHo8kcCX0
 		float light_pdf;
-		float weight_l;
+		float mis_weight_l = 0.f;
 		float mat_pdf;
-		float weight_m;
+		float mis_weight_m = 0.f;
 		Intersection light_inter;
 		sampleLight(light_inter, light_pdf);
 		if (!light_inter.intersected || isShadowRayBlocked(inter, light_inter.pos)) {}
@@ -260,16 +264,16 @@ public:
 				// pdf_l = pdf_m * cos_theta_prime / r2
 				float pdfl = light_pdf;
 				light_pdf = light_pdf * r2 / cos_theta_prime;
-				float msi_weight = getMisWeight(light_pdf, mat_pdf);
+				mis_weight_l = getMisWeight(light_pdf, mat_pdf);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = light_inter.mtlcolor.emission;
 				sampleValue = sampleValue + 
-					(msi_weight * L_i * f_r * cos_theta * cos_theta_prime / (r2 * pdfl));
+					(mis_weight_l * L_i * f_r * cos_theta * cos_theta_prime / (r2 * pdfl));
 			}
 		}
 
 		// *********************** Sample BSDF ********************
-		Vector3f wi = inter.mtlcolor.sampleDirection(wo, inter.nDir);	// delete normalize
+		Vector3f wi = inter.mtlcolor.sampleDirection(wo, inter.nDir);	
 		wi = normalized(wi);
 		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);
 		Intersection x_inter;
@@ -277,7 +281,6 @@ public:
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		if (!x_inter.intersected) {}
 		else {
-
 			float dot = inter.nDir.dot(wi);
 			float cos_theta = dot < 0 ? 0 : dot;
 
@@ -290,103 +293,33 @@ public:
 				// pdf_l = pdf_m * cos_theta_prime / r2
 				float r2 = (x_inter.pos - inter.pos).norm2();
 				float l_pdf_transformed = light_pdf * r2 / cos_theta_prime;
-				float msi_weight = getMisWeight(mat_pdf, l_pdf_transformed);
+				mis_weight_m = getMisWeight(mat_pdf, l_pdf_transformed);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
-				Vector3f res = x_inter.mtlcolor.emission;
+				Vector3f L_i = x_inter.mtlcolor.emission;
 				if (mat_pdf < 0.03f) return sampleValue;
-				if (mat_pdf > 1) mat_pdf = 1;
+
 				sampleValue = sampleValue +
-					(msi_weight * res * f_r * cos_theta / mat_pdf);
+					(mis_weight_m * L_i * f_r * cos_theta / mat_pdf);
 				return sampleValue;
-			}
-			else {
+			} 
+			// ******************* direct illumination ENDS ********************
+			else {	// indirect illumination
 			 	if (getRandomFloat() > Russian_Roulette)
 					return sampleValue;
 				Vector3f res = traceRay(rayOrig, wi, depth + 1);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				if (mat_pdf < 0.03f) return sampleValue;
-				if (mat_pdf > 1) mat_pdf = 1;
-				sampleValue = sampleValue + f_r * res * cos_theta / (mat_pdf * Russian_Roulette);
+
+				sampleValue = sampleValue + ( 1 * f_r * res * cos_theta / (mat_pdf * Russian_Roulette));
 			}
+			// 4/30/2024
+			// by experiment it doesnt always equal 1, need to verify in the future
+			// only W1(x_1) + W2(x_1) == 1
+			// std::cout << mis_weight_m << " ";std::cout<<  mis_weight_l << "\n";		
 		}
 
-		/*		// *********************** Sample Light ********************
-		// https://github.com/Apress/Ray-Tracing-Gems-II/tree/main
-		float light_pdf;
-		float weight_l;
-		float mat_pdf;
-		float weight_m;
-		Intersection light_inter;
-		sampleLight(light_inter, light_pdf);
-		if (!light_inter.intersected || isShadowRayBlocked(inter, light_inter.pos)) {}
-		else{
-			Vector3f wi = light_inter.pos - inter.pos;
-			float r2 = wi.norm2();
-			wi = normalized(wi);
-			if(wi.dot(light_inter.nDir) > 0){}
-			else{
-				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);	// w.r.t solid angle
-				Vector3f light_N = normalized(light_inter.nDir);
-				float cos_theta_prime = light_N.dot(-wi);
-				cos_theta_prime = cos_theta_prime < 0 ? 0 : cos_theta_prime;
-				float dot = inter.nDir.dot(wi);
-				float cos_theta = dot < 0 ? 0 : dot;
-				// transform the pdfs to the same space: solid angle space
-				// pdf_m / pdf_l = dA / dw
-				// dw = dA * cos_theta_prime / r2
-				// dA/dw = r2 / cos_theta_prime
-				// pdf_l = pdf_m * cos_theta_prime / r2
-				float pdfl = light_pdf;
-				light_pdf = light_pdf * r2 / cos_theta_prime;
-				float msi_weight = getMisWeight(light_pdf, mat_pdf);
-				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
-				Vector3f L_i = light_inter.mtlcolor.emission;
-				sampleValue = sampleValue + 
-					(msi_weight * L_i * f_r * cos_theta * cos_theta_prime / (r2 * pdfl));
-			}
-		}
 
-		// *********************** Sample BSDF ********************
-		Vector3f wi = inter.mtlcolor.sampleDirection(wo, inter.nDir);	// delete normalize
-		wi = normalized(wi);
-		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);
-		Intersection x_inter;
-		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
-		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
-		if (!x_inter.intersected) {}
-		else {
-			if (getRandomFloat() > Russian_Roulette)
-				return sampleValue;
-
-			float dot = inter.nDir.dot(wi);
-			float cos_theta = dot < 0 ? 0 : dot;
-
-			light_pdf = getLightPdf(x_inter);
-			if (light_pdf) {
-				Vector3f light_N = normalized(x_inter.nDir);
-				float cos_theta_prime = light_N.dot(-wi);
-				cos_theta_prime = cos_theta_prime < 0 ? 0 : cos_theta_prime;
-				// transform the pdfs to the same space
-				// pdf_l = pdf_m * cos_theta_prime / r2
-				float r2 = (x_inter.pos - inter.pos).norm2();
-				float l_pdf_transformed = light_pdf * r2 / cos_theta_prime;
-				float msi_weight = getMisWeight(mat_pdf, l_pdf_transformed);
-				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
-				Vector3f res = x_inter.mtlcolor.emission;
-				sampleValue = sampleValue +
-					(msi_weight * res * f_r * cos_theta / mat_pdf);
-				return sampleValue;
-			}
-			//else {
-			//	Vector3f res = traceRay(rayOrig, wi, depth + 1);
-			//	Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
-			//	sampleValue = sampleValue + f_r * res * cos_theta / (mat_pdf * Russian_Roulette);
-			//}
-		}*/
-
-
-
-#else // Next Event Estimation
+#else // Next Event Estimation Only
 		if (inter.mtlcolor.mType == SPECULAR_REFLECTIVE)
 			return calcForMirror(origin, dir, inter, depth);
 		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE)
@@ -427,7 +360,7 @@ public:
 			return dir_illu;
 
 		// inter point p to another point x
-		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
+		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(wo, inter.nDir);
 		p_to_x_dir = normalized(p_to_x_dir);
 
 		Intersection x_inter;
@@ -446,8 +379,7 @@ public:
 			// 3/6/2024 22:30    
 			// denoising hack
 			// pdf < 0.0xx is very unlikely. this hack is still not physically true.
-			if (pdf < 0.03f) return dir_illu;
-			if (pdf > 1) pdf = 1;
+			if (pdf < 0.03f) return sampleValue;
 
 			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
 			indir_illu = res * f_r * cos_pnormal_xdir / (pdf * Russian_Roulette);
@@ -620,6 +552,7 @@ public:
 		// if there's no light
 		if (size == 0) {
 			inter.intersected = false;
+			pdf = 0;
 			return;
 		}
 
@@ -631,7 +564,7 @@ public:
 
 		lightObject->samplePoint(inter, pdf);
 		// independent event p(a&&b) == p(a) *  p(b)
-		pdf = pdf * lightObject->getArea() / totalArea;
+		pdf = (1.f / (size * lightObject->getArea()));
 	}
 
 	/// <summary>
@@ -754,12 +687,11 @@ public:
 		if (size == 0) {
 			return 0;
 		}
-
 		if (!inter.obj->mtlcolor.hasEmission()) return 0;
 
 		// independent event p(a&&b) == p(a) *  p(b)
 		float area = inter.obj->getArea();
-		return  1/  (area * totalArea);
+		return  1/ (size * area);
 	}
 };
 
@@ -799,6 +731,9 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 				estimate = estimate + r->traceRay(eyePos, rayDir, 0);
 			}
 			estimate = estimate * SPP_inv;
+#if MIS
+			estimate = estimate * 1.f;
+#endif
 			color = estimate;
 		}
 		//showProgress((float)y / e);		// comment it out for a clean terminal
@@ -810,6 +745,9 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 float getMisWeight(float pdf, float otherPdf) {
 	// balance heuristic
 	return pdf / (pdf + otherPdf);
+
+	// power heuristic
+	return (pdf*pdf) / ((pdf + otherPdf)* (pdf + otherPdf));
 }
 
 

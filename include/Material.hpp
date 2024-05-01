@@ -81,11 +81,6 @@ public:
 			case MICROFACET: {
 				// Cook-Torrance Model
 				
-				// 1/11/2024
-				// need to check N dot wi to see if the incident light is inside obj or outside
-				// only for indirect illumination
-				
-				// ************** Reflection erm ********************
 				Vector3f h = normalized(wi + wo);
 				float costheta = h.dot(wo);
 
@@ -96,15 +91,13 @@ public:
 				float D = D_ndf(h, N, roughness);
 				//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
 				float G = G_smf(wi, wo, N, roughness);
-				Vector3f fr = (F * G * D) / ((4 * wi.dot(N)) * wo.dot(N));	// originaly float fr
-
-				fr = clamp(0, 1, fr);	
-				Vector3f diffuse_term = (1.f - F) * diffuse / M_PI;
-				Vector3f ref_term =  fr * 1;		// or 1
-				return ref_term;	// used for MIS testing
+				Vector3f fr = (F * G * D) / (4 * wi.dot(N) * wo.dot(N));	// originaly float fr
+	
+				Vector3f diffuse_term = (1.f - F) * (diffuse / M_PI);
+				Vector3f ref_term =  fr;		
+				// return ref_term;	// used for MIS testing
 				return diffuse_term + ref_term;
 						
-				//************** Reflection term ends ********************
 			}
 
 			case SPECULAR_REFLECTIVE:
@@ -114,8 +107,8 @@ public:
 				break;
 			}
 
-			case PERFECT_REFRACTIVE:{
-				return 1;
+			case PERFECT_REFRACTIVE:{	// todo list
+				return 0;
 				break;
 			}
 			
@@ -274,7 +267,9 @@ public:
 			break;
 		}
 		case SPECULAR_REFLECTIVE: {
-			return 1;
+			// if(normalized(wi+wo).dot(N) == 1)
+				return 1;
+			// return 0;
 			break;
 		}
 

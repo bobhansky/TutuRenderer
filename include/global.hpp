@@ -210,7 +210,7 @@ Vector2f getEleIn(std::vector<Vector2f>& arr, int index) {
 // and we need to use a different Fresnel equation for conductors altogether. 
 Vector3f fresnelSchlick(float cosTheta, const Vector3f& F0)
 {
-	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+	return F0 + (1.0f - F0) * powf(1.0f - cosTheta, 5.0f);
 }
 
 // fresnel, get the specular reflection fraction 
@@ -313,7 +313,9 @@ float G_smf(Vector3f& wi, Vector3f& wo, Vector3f& n, float roughness) {
 	// in paper   Microfacet Models for Refraction through Rough Surface
 	float G1_wi = 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wi_n), 2)));
 	float G1_wo = 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wo_n), 2)));
-	return clamp(0.f, 1.f, G1_wi * G1_wo);
+
+	return G1_wi * G1_wo;
+	// return clamp(0.f, 1.f, G1_wi * G1_wo);
 
 	
 	// a better G  according to https://zhuanlan.zhihu.com/p/434964126
