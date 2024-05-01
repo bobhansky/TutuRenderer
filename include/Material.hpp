@@ -16,7 +16,7 @@ enum MaterialType {
 
 class Material {
 public:
-	Vector3f diffuse =  Vector3f(0.9f, 0.9f, 0.9f);
+	Vector3f diffuse = Vector3f(0.9f, 0.9f, 0.9f);
 	Vector3f specular = Vector3f(1.f);
 	Vector3f emission = Vector3f(0.f);
 	MaterialType mType = LAMBERTIAN;
@@ -59,61 +59,62 @@ public:
 	}
 
 	bool hasEmission() {
-		return emission.x || emission.y || emission.z ;
+		return emission.x || emission.y || emission.z;
 	}
 
 	// BxDF, return vec3f of elements within [0,1] 
 	// wi, wo: origin at inter.pos center, pointing outward
 	// wi: incident ray
 	// wo: view dir
-	Vector3f BxDF( Vector3f& wi,  Vector3f& wo, Vector3f& N, float eta_scene) {
+	Vector3f BxDF(Vector3f& wi, Vector3f& wo, Vector3f& N, float eta_scene) {
 		switch (mType) {
-			case LAMBERTIAN: {
-				float cos_theta =wo.dot(N);
-				// account for reflection contribution only
-				if (cos_theta > 0.f) {
-					return diffuse / M_PI;
-				}
-				else return Vector3f(0.f);
-				break;
+		case LAMBERTIAN: {
+			float cos_theta = wo.dot(N);
+			// account for reflection contribution only
+			if (cos_theta > 0.f) {
+				return diffuse / M_PI;
 			}
-			
-			case MICROFACET: {
-				// Cook-Torrance Model
-				
-				Vector3f h = normalized(wi + wo);
-				float costheta = h.dot(wo);
+			else return Vector3f(0.f);
+			break;
+		}
 
-				Vector3f F0(0.04f);	// should be 0.04			
-				F0 = lerp(F0, this->diffuse, this->metallic);
-				Vector3f F = fresnelSchlick(costheta, F0);	// learnopgl https://learnopengl.com/PBR/Theory
-				// float F = fresnel(-wi, h, eta_scene, this->eta);
-				float D = D_ndf(h, N, roughness);
-				//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
-				float G = G_smf(wi, wo, N, roughness);
-				Vector3f fr = (F * G * D) / (4 * wi.dot(N) * wo.dot(N));	// originaly float fr
-	
-				Vector3f diffuse_term = (1.f - F) * (diffuse / M_PI);
-				Vector3f ref_term =  fr;		
-				// return ref_term;	// used for MIS testing
-				return diffuse_term + ref_term;
-						
-			}
+		case MICROFACET: {
+			// Cook-Torrance Model
 
-			case SPECULAR_REFLECTIVE:
-			{
-				// https://www.youtube.com/watch?v=sg2xdcB8M3c
-				return 1/N.dot(wi);
-				break;
-			}
+			Vector3f h = normalized(wi + wo);
+			float costheta = h.dot(wo);
 
-			case PERFECT_REFRACTIVE:{	// todo list
-				return 0;
-				break;
-			}
-			
-			default:
-				return Vector3f(0.f);
+			Vector3f F0(0.04f);	// should be 0.04			
+			F0 = lerp(F0, this->diffuse, this->metallic);
+			Vector3f F = fresnelSchlick(costheta, F0);	// learnopgl https://learnopengl.com/PBR/Theory
+			// float F = fresnel(-wi, h, eta_scene, this->eta);
+			float D = D_ndf(h, N, roughness);
+			//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
+			float G = G_smf(wi, wo, N, roughness);
+			Vector3f fr = (F * G * D) / (4 * wi.dot(N) * wo.dot(N));	// originaly float fr
+
+			//fr = clamp(0, 1, fr);
+			Vector3f diffuse_term = (1.f - F) * (diffuse / M_PI);
+			Vector3f ref_term = fr;
+			// return ref_term;	// used for MIS testing
+			return diffuse_term + ref_term;
+
+		}
+
+		case SPECULAR_REFLECTIVE:
+		{
+			// https://www.youtube.com/watch?v=sg2xdcB8M3c
+			return 1 / N.dot(wi);
+			break;
+		}
+
+		case PERFECT_REFRACTIVE: {	// todo list
+			return 0;
+			break;
+		}
+
+		default:
+			return Vector3f(0.f);
 		}
 	}
 
@@ -121,18 +122,18 @@ public:
 
 	// sample a direction on the hemisphere
 	// wi: incident dir, pointing outward
-	Vector3f sampleDirection(const Vector3f& wi, const Vector3f& N, 
+	Vector3f sampleDirection(const Vector3f& wi, const Vector3f& N,
 		const float eta_i = 0.f, const float eta_t = 0.f) {
 
 		switch (mType)
 		{
-		case MICROFACET: 
+		case MICROFACET:
 		{
 			// https://zhuanlan.zhihu.com/p/78146875
 			// https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
 			float r0 = getRandomFloat();
 			float r1 = getRandomFloat();
-			float a2 = roughness * roughness *roughness* roughness;
+			float a2 = roughness * roughness * roughness * roughness;
 			float phi = 2 * M_PI * r1;
 			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
 
@@ -160,13 +161,13 @@ public:
 			float phi = 2 * M_PI * r2;
 
 			Vector3f dir;
-			float sinTheta = sqrtf(std::max(0.f, 1.f - powf(r1,2)));
+			float sinTheta = sqrtf(std::max(0.f, 1.f - powf(r1, 2)));
 			dir.x = cos(phi) * sinTheta;
 			dir.y = sin(phi) * sinTheta;
 			dir.z = cosTheta;
 
 			dir = normalized(dir);
-			
+
 			return SphereLocal2world(N, dir);
 			break;
 		}
@@ -178,7 +179,7 @@ public:
 		case PERFECT_REFRACTIVE: {
 			float F = fresnel(-wi, N, eta_i, eta);
 			if (getRandomFloat() < F) {
-				return getReflectionDir(-wi, N); 
+				return getReflectionDir(-wi, N);
 			}
 			else return getRefractionDir(-wi, N, eta_i, eta_t);
 
@@ -192,7 +193,7 @@ public:
 
 	}
 
-	
+
 	Vector3f SphereLocal2world(const Vector3f& n, const Vector3f& dir) {
 		// https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#generatingrandomdirections/uniformsamplingahemisphere
 		// 8. orthonormal basis
@@ -212,11 +213,11 @@ public:
 		// 2/21/2024 IMPORTANT
 		// 2 unit vectors cross product doens't guarantee to produce unit vec, unless they are orthogonal
 		// Vector3f S = crossProduct(N, a);		// reason for wrong result
-		Vector3f S = normalized(crossProduct(N, a)); 
-		Vector3f T = crossProduct(N, S); 
-		
+		Vector3f S = normalized(crossProduct(N, a));
+		Vector3f T = crossProduct(N, S);
+
 		return normalized(dir.x * S + dir.y * T + dir.z * N);
-		
+
 
 		// tangent and binormal??  2/21/2024 still could not understand
 		// https://tutorial.math.lamar.edu/classes/calcII/tangentnormalvectors.aspx
@@ -240,7 +241,7 @@ public:
 		//}
 		//B = crossProduct(C, n);
 		//return dir.x * B + dir.y * C + dir.z * n;
-		
+
 	}
 
 	// wo: -camera dir   wi: sampled dir
@@ -268,7 +269,7 @@ public:
 		}
 		case SPECULAR_REFLECTIVE: {
 			// if(normalized(wi+wo).dot(N) == 1)
-				return 1;
+			return 1;
 			// return 0;
 			break;
 		}
@@ -277,7 +278,7 @@ public:
 			float F = fresnel(-wi, N, eta_i, this->eta);
 			if (wi.dot(N) < 0)
 				return 1 - F;
-			
+
 			return F;
 			break;
 		}

@@ -30,6 +30,7 @@ float Russian_Roulette = 0.78f;
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
 #define MAX_DEPTH 7
+#define MIN_PDF 0.04f
 
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
@@ -212,7 +213,10 @@ public:
 				t->mtlcolor = mtlcolor;
 				t->textureIndex = textureIndex;
 				t->normalMapIndex = bumpMapIndex;
-				if (t->textureIndex != -1 || t->normalMapIndex != -1)
+				t->roughnessMapIndex = roughnessIndex;
+				t->metallicMapIndex = metallicIndex;
+				if (t->textureIndex != -1 || t->normalMapIndex != -1 || t->metallicMapIndex != -1
+					|| t->roughnessMapIndex != -1)
 					t->isTextureActivated = true;
 				t->initializeBound();
 				scene.add(std::move(t));

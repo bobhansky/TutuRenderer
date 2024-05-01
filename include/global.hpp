@@ -210,7 +210,7 @@ Vector2f getEleIn(std::vector<Vector2f>& arr, int index) {
 // and we need to use a different Fresnel equation for conductors altogether. 
 Vector3f fresnelSchlick(float cosTheta, const Vector3f& F0)
 {
-	return F0 + (1.0f - F0) * powf(1.0f - cosTheta, 5.0f);
+	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 // fresnel, get the specular reflection fraction 
