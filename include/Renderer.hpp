@@ -41,6 +41,8 @@ struct Thread_arg {
 	Renderer* r;
 };
 
+std::vector<std::string> records;
+
 void sub_render(Thread_arg*, int, int, int);
 
 
@@ -59,6 +61,8 @@ public:
 
 		if (EXPEDITE) interStrategy = new BVHStrategy();
 		else interStrategy = new BaseInterStrategy();
+
+		records = std::vector<std::string>(N_THREAD, std::string());
 
 		g->scene.initializeBVH();
 	}
@@ -158,7 +162,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 428 && y == 509) {
+				if (x == 1026 && y == 618) {
 					PRINT = true;
 				}
 
@@ -184,9 +188,6 @@ public:
 					estimate = estimate + traceRay(eyeLocation, rayDir, 0);
 				}
 				estimate = estimate * SPP_inv;
-#if MIS
-				estimate = estimate * 1.f;
-#endif
 
 				PRINT = false;
 				color = estimate;
@@ -206,9 +207,18 @@ public:
 	std::mutex sampleLight_mutex;
 
 
+
 	// -dir is the wo, trace a ray into the scene and update intersection
 	// use Russian Roulette to terminate
-	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth, Intersection* nxtInter = nullptr) {
+	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth, Vector3f tp,	Intersection* nxtInter = nullptr, int thdID = -1, bool recording = false) {
+#if RECORD
+		if (recording) {
+			records[thdID].append(" ***Depth=" + std::to_string(depth) +
+				": rOrig" + origin.toString() + ", "
+				+ "rDir" + dir.toString());
+		}
+#endif
+
 		if (depth > MAX_DEPTH) return 0;
 
 		Vector3f sampleValue = 0;
@@ -230,7 +240,7 @@ public:
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
 		if (inter.mtlcolor.hasEmission()) {
-			sampleValue = sampleValue + inter.mtlcolor.emission;
+			return inter.mtlcolor.emission;
 		}
 		Vector3f wo = -dir;
 
@@ -255,7 +265,7 @@ public:
 				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);	// w.r.t solid angle
 				Vector3f light_N = normalized(light_inter.nDir);
 				float cos_theta_prime = light_N.dot(-wi);
-				cos_theta_prime = cos_theta_prime < 0 ? 0 : cos_theta_prime;
+				if (cos_theta_prime <= 0) goto jmp;
 				float dot = inter.nDir.dot(wi);
 				float cos_theta = dot < 0 ? 0 : dot;
 				// transform the pdfs to the same space: solid angle space
@@ -268,14 +278,18 @@ public:
 				mis_weight_l = getMisWeight(light_pdf, mat_pdf);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = light_inter.mtlcolor.emission;
+				if (r2 * pdfl < MIN_PDF) return sampleValue;
 				sampleValue = sampleValue +
 					(mis_weight_l * L_i * f_r * cos_theta * cos_theta_prime / (r2 * pdfl));
 			}
 		}
 
 		// *********************** Sample BSDF ********************
-		Vector3f wi = inter.mtlcolor.sampleDirection(wo, inter.nDir);
-		wi = normalized(wi);
+jmp:
+		Vector3f wi; 
+		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, wi))
+			return sampleValue;
+
 		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
@@ -289,7 +303,9 @@ public:
 			if (light_pdf) {
 				Vector3f light_N = normalized(x_inter.nDir);
 				float cos_theta_prime = light_N.dot(-wi);
-				cos_theta_prime = cos_theta_prime < 0 ? 0 : cos_theta_prime;
+				if(cos_theta_prime <= 0)
+					goto jmp2;
+
 				// transform the pdfs to the same space
 				// pdf_l = pdf_m * cos_theta_prime / r2
 				float r2 = (x_inter.pos - inter.pos).norm2();
@@ -297,27 +313,41 @@ public:
 				mis_weight_m = getMisWeight(mat_pdf, l_pdf_transformed);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = x_inter.mtlcolor.emission;
+				
 				if (mat_pdf < MIN_PDF) return sampleValue;
-
 				sampleValue = sampleValue +
 					(mis_weight_m * L_i * f_r * cos_theta / mat_pdf);
 				return sampleValue;
 			}
 			// ******************* direct illumination ENDS ********************
 			else {	// indirect illumination
-				if (getRandomFloat() > Russian_Roulette)
+jmp2:
+				float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
+				tp = depth > MIN_DEPTH ? tp : 1;
+				if (getRandomFloat() > rr_prob)
 					return sampleValue;
-				Vector3f res = traceRay(rayOrig, wi, depth + 1, &x_inter);
-				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
-				if (mat_pdf < MIN_PDF) return sampleValue;
 
-				sampleValue = sampleValue + (1 * f_r * res * cos_theta / (mat_pdf * Russian_Roulette));
+				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
+				Vector3f coe =  f_r * cos_theta / (mat_pdf * rr_prob);
+				tp = tp * coe;
+				Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp , &x_inter, thdID, recording );
+#if RECORD
+				if (recording) {
+					records[thdID].append(" ***Depth=" + std::to_string(depth+1) +
+						"[returns]" + Li.toString() + "\n");
+				}
+#endif
+
+				if (mat_pdf < MIN_PDF) return sampleValue;
+				sampleValue = sampleValue + (Li * coe);
 			}
 			// 4/30/2024
 			// by experiment it doesnt always equal 1, need to verify in the future
 			// only W1(x_1) + W2(x_1) == 1
 			// std::cout << mis_weight_m << " ";std::cout<<  mis_weight_l << "\n";		
 		}
+
+
 
 
 #else // Next Event Estimation Only
@@ -355,35 +385,37 @@ public:
 		}
 
 		// ****** Indirect Illumination
+		//// test RussianRoulette
+		//if (getRandomFloat() > Russian_Roulette)
+		//	return sampleValue;
 
-		// test RussianRoulette
-		if (getRandomFloat() > Russian_Roulette)
-			return dir_illu;
+		float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
+		tp = depth > MIN_DEPTH ? tp : 1;
+		if (getRandomFloat() > rr_prob)
+			return sampleValue;
 
 		// inter point p to another point x
-		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(wo, inter.nDir);
-		p_to_x_dir = normalized(p_to_x_dir);
+		Vector3f p_to_x_dir;
+		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, p_to_x_dir))
+			return sampleValue;
 
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
 		// calculate only when inter is on a non-emissive object
 		if (x_inter.intersected && !x_inter.mtlcolor.hasEmission()) {
-			float cos_pnormal_xdir = std::max(0.f, inter.nDir.dot(p_to_x_dir));
-
 
 			float pdf = inter.mtlcolor.pdf(p_to_x_dir, wo, inter.nDir);
-			// BRDF has reciprocity
-			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
+			float cos_theta = std::max(0.f, inter.nDir.dot(p_to_x_dir));
 
-			// in case that pdf is too small and generate white spot
-			// 3/6/2024 22:30    
-			// denoising hack
-			// pdf < 0.0xx is very unlikely. this hack is still not physically true.
+			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
+			Vector3f coe = f_r * cos_theta / (pdf * rr_prob);
+			tp = tp * coe;
+			Vector3f Li = traceRay(rayOrig, p_to_x_dir, depth + 1, tp, &x_inter);
+
 			if (pdf < MIN_PDF) return sampleValue;
-			//if (pdf > 1) pdf = 1;
-			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
-			indir_illu = res * f_r * cos_pnormal_xdir / (pdf * Russian_Roulette);
+			indir_illu = indir_illu + (Li * coe);
+
 		}
 
 		sampleValue = sampleValue + dir_illu + indir_illu;
@@ -579,7 +611,8 @@ public:
 	/// <returns></returns>
 	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
 		if (depth > MAX_DEPTH) return 0;	// 2 mirror reflect forever causing stack overflow
-		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir);
+		Vector3f p_to_x_dir;
+		inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir, p_to_x_dir);
 
 		p_to_x_dir = normalized(p_to_x_dir);
 
@@ -592,11 +625,8 @@ public:
 			// float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
 			// BRDF has reciprocity
 			// Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
-			// in case that pdf is too small and generate white img
-			// if (pdf == 0.f) return { 0,0,0 };
-			// if (pdf > 1.f) pdf = 1.f;
 
-			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
+			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1, Vector3f(1));
 			return res; // *f_r* cos_pnormal_xdir / pdf;
 		}
 		return 0;
@@ -627,13 +657,12 @@ public:
 			N = -N;
 		}
 
-		Vector3f p_to_x_dir = inter.mtlcolor.sampleDirection(wo, N, eta_i, eta_t);
+		Vector3f p_to_x_dir;
+		inter.mtlcolor.sampleDirection(wo, N, p_to_x_dir, eta_i, eta_t);
 		p_to_x_dir = normalized(p_to_x_dir);
 		float pdf = inter.mtlcolor.pdf(p_to_x_dir, wo, N, eta_i, eta_t);
 		Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, N, eta_i);
 
-		if (pdf < 0.03f) return 0;
-		if (pdf > 1) pdf = 1;
 
 		// total internal reflection
 		if (p_to_x_dir.norm() == 0.f) {
@@ -651,7 +680,7 @@ public:
 			rayOrig = rayOrig - N * EPSILON;
 			//cos_pnormal_xdir = (-N).dot(p_to_x_dir);	
 		}
-		Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1);
+		Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1, Vector3f(1));
 
 		return res; //* cos_pnormal_xdir * f_r / pdf;
 	}
@@ -719,6 +748,14 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 	Renderer* r = arg.r;
 	PPMGenerator* g = r->g;
 
+#if RECORD
+	std::ofstream fout;
+	std::string outfileName;
+	outfileName.append("./Records/" + std::to_string(s) + "_to_" + std::to_string(e) + ".txt");
+	fout.open(outfileName);
+	
+#endif
+
 	for (int y = s; y < e; y++) {
 		for (int x = 0; x < Ncol; x++) {
 			Vector3f& color = rgb_array->at(g->getIndex(x, y));
@@ -726,29 +763,47 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 			Vector3f pixelPos = ul + x * delta_h + y * delta_v + c_off_v + c_off_v;
 			rayDir = normalized((pixelPos - eyePos));
 
+#if RECORD
+			if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) {
+				records[threadID].append("\n--------------\n(" + std::to_string(x) + ", " + std::to_string(y) + "): \n");
+			}
+#endif
+
 			// trace ray into each pixel
 			Vector3f estimate;
 			for (int i = 0; i < SPP; i++) {
-				estimate = estimate + r->traceRay(eyePos, rayDir, 0);
+#if RECORD
+				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X)
+					records[threadID].append("\n   SPP = " + std::to_string(i));
+#endif
+
+				Vector3f res = r->traceRay(eyePos, rayDir, 0, Vector3f(1),nullptr, threadID, true);
+				estimate = estimate + res;	
+				
+
+#if RECORD
+				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) 
+					fout << records[threadID] << "\n";
+#endif
+				records[threadID].clear();
 			}
 			estimate = estimate * SPP_inv;
-#if MIS
-			estimate = estimate * 1.f;
-#endif
+
 			color = estimate;
 		}
-		//showProgress((float)y / e);		// comment it out for a clean terminal
 	}
-
+#if RECORD
+	fout.close();
+#endif
 }
 
 
 float getMisWeight(float pdf, float otherPdf) {
 	// balance heuristic
-	//return pdf / (pdf + otherPdf);
+	return pdf / (pdf + otherPdf);
 
 	// power heuristic
-	return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
+	//return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
 }
 
 

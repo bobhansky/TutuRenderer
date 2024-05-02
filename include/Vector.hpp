@@ -80,7 +80,15 @@ public:
 		std::cout << "x: " << x << ", y: " << y << ", z: " << z << std::endl;
 	}
 
+	std::string toString() const {
+		return "(" + std::to_string(x)+ ", "+ std::to_string(y) +", "+ std::to_string(z) + ")";
+	}
+
 	// ************************* vector operations *************************
+
+	operator std::string() const {
+		return "(" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
+	}
 	
 	// const float&		const lvalue reference, can point to both lvalue and rvalue
 	Vector3f operator*(const float& c) {

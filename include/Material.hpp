@@ -122,13 +122,16 @@ public:
 
 	// sample a direction on the hemisphere
 	// wi: incident dir, pointing outward
-	Vector3f sampleDirection(const Vector3f& wi, const Vector3f& N,
+	bool sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes,
 		const float eta_i = 0.f, const float eta_t = 0.f) {
 
 		switch (mType)
 		{
 		case MICROFACET:
 		{
+			if (wi.dot(N) <= 0.0f) 
+				return false;		// crucial
+			
 			// https://zhuanlan.zhihu.com/p/78146875
 			// https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
 			float r0 = getRandomFloat();
@@ -138,11 +141,20 @@ public:
 			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
 
 			float r = std::sin(theta);
-			return getReflectionDir(-wi, SphereLocal2world(N, Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta))));
+			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
+			Vector3f res = getReflectionDir(-wi, SphereLocal2world(N, h));
+			res = normalized(res);
+			if (res.dot(N) <= 0)	// very crucial for white noise ??
+				return false;
+
+			sampledRes = res;
+			return true;
 			break;
 		}
 
 		case LAMBERTIAN: {
+			if (wi.dot(N) <= 0.0f)
+				return false;
 			// cosine weighted
 			// **** inverse transformation sampling
 			// pbrt 13.6.1  *important
@@ -168,25 +180,32 @@ public:
 
 			dir = normalized(dir);
 
-			return SphereLocal2world(N, dir);
+			Vector3f res = SphereLocal2world(N, dir);
+			if (normalized(res).dot(N) < 0)
+				return false;
+
+			sampledRes = res;
+			return true;
 			break;
 		}
 
 		case SPECULAR_REFLECTIVE: {
-			return getReflectionDir(-wi, N);
+			sampledRes = getReflectionDir(-wi, N);
+			return true;
 			break;
 		}
 		case PERFECT_REFRACTIVE: {
 			float F = fresnel(-wi, N, eta_i, eta);
 			if (getRandomFloat() < F) {
-				return getReflectionDir(-wi, N);
+				sampledRes = getReflectionDir(-wi, N);
 			}
-			else return getRefractionDir(-wi, N, eta_i, eta_t);
+			else sampledRes = getRefractionDir(-wi, N, eta_i, eta_t);
 
+			return true;
 			break;
 		}
 		default: {
-			return Vector3f(0.f);
+			return false;
 			break;
 		}
 		}
@@ -217,31 +236,6 @@ public:
 		Vector3f T = crossProduct(N, S);
 
 		return normalized(dir.x * S + dir.y * T + dir.z * N);
-
-
-		// tangent and binormal??  2/21/2024 still could not understand
-		// https://tutorial.math.lamar.edu/classes/calcII/tangentnormalvectors.aspx
-		// https://learnopengl.com/Advanced-Lighting/Normal-Mapping
-		// transform local normal (0,0,1) to world normal (N.x, N.y, N.z)
-		// nori: coordinateSystem
-		// https://github.com/wjakob/nori/blob/master/src/common.cpp
-		//Vector3f B, C;
-		//if (std::fabs(n.x) > std::fabs(n.y)) {
-		//	float invLen = 1.0f / std::sqrt(n.x * n.x + n.z * n.z);	
-		//	C = Vector3f(n.z * invLen, 0.0f, -n.x * invLen);
-		//	// n dot C:
-		//	// n.x * n.z/sqrt(n.x * n.x + n.z * n.z) + 
-		//	// 0 * n.y  +
-		//	// n.z * -n.x /sqrt(n.x * n.x + n.z * n.z) == 0
-		//	// C is on xz plane
-		//}
-		//else {
-		//	float invLen = 1.0f / std::sqrt(n.y * n.y + n.z * n.z);
-		//	C = Vector3f(0.0f, n.z * invLen, -n.y * invLen);
-		//}
-		//B = crossProduct(C, n);
-		//return dir.x * B + dir.y * C + dir.z * n;
-
 	}
 
 	// wo: -camera dir   wi: sampled dir
