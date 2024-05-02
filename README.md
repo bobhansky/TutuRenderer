@@ -52,6 +52,15 @@ right: Path Tracing
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1600_512spp.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/MIS-4.png)
+
+<pre>
+upperleft: BSDF sampling                                 upperright: light Sampling
+
+lowerleft: NEE only                                      lowerright: NEE + MIS
+</pre>
+
 
 
