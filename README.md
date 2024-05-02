@@ -18,7 +18,7 @@ A CPU based Path Tracer for personal interest and education.
    - Albedo/Diffuse Map
    - Normal Map
    - Roughness Map
-   - Metallic Map
+   - Metallicness Map
 - Post Processing
    - Bloom
    - HDR
