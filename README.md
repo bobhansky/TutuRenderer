@@ -53,7 +53,5 @@ right: Path Tracing
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/wall.png)  
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/256_wall.png)
 
 
