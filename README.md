@@ -18,6 +18,9 @@ A CPU based Path Tracer for personal interest and education.
    - Normal Map
    - Roughness Map
    - Metallicness Map
+- Acceleration
+   - BVH default (midpoint)
+   - CPU Multi-Threading (std::thread)   
 - Post Processing
    - Bloom
    - HDR
