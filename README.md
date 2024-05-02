@@ -6,7 +6,7 @@ A CPU based Path Tracer for personal interest and education.
    - Path Tracing
    - BDPT (**Todo**)
 - Matertial:
-   - Lambertain Diffuse
+   - Lambertain Diffuse (cos weighted)
    - Microfacet Reflectance (Cook Torrance Model with GGX distribution).
    - Perfect Reflective
    - Perfect Refractive.
