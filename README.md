@@ -4,7 +4,6 @@ A CPU based Path Tracer for personal interest and education.
 ## Features
 - Integrator
    - Path Tracing
-   - BDPT (**Todo**)
 - Matertial:
    - Lambertain Diffuse (cos weighted)
    - Microfacet Reflectance (Cook Torrance Model with GGX distribution).
@@ -24,6 +23,11 @@ A CPU based Path Tracer for personal interest and education.
    - HDR
    - Tone Mapping / Gamma Correction
 - Russian Roulette (Throughput)
+
+## Todo List
+   - Microfacet refractive/translucent
+   - BDPT 
+   - don't rely on .ppm image file
 ## Usage
    Develop Environment: MSVC C++14, Visual Studio 2022
 
