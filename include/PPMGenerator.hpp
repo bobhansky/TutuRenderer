@@ -19,9 +19,9 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 512;
+int SPP = 1024;
 float SPP_inv = 1.f / SPP;
-float Russian_Roulette = 0.78f;
+//float Russian_Roulette = 0.78f;
 
 #define EXPEDITE true		// BVH to expedite intersection
 #define MULTITHREAD			// multi threads to expedite, comment it out for better ebug
@@ -31,15 +31,16 @@ float Russian_Roulette = 0.78f;
 #define GAMMA_VAL 0.78f
 #define MAX_DEPTH 7
 #define MIN_DEPTH 3
-#define MIN_PDF 0.03f
+#define MIN_DIVISOR 0.03f
 
 // these are used for debugging: saving ray info to disk
-// if record, use low SPP and MAX_DEPTH
-#define RECORD 0
-#define RECORD_MIN_X 28
-#define RECORD_MAX_X 230
-#define RECORD_MIN_Y 28
-#define RECORD_MAX_Y 230
+// if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
+// RECORD is only for std::treads multithreading
+#define RECORD 0		
+#define RECORD_MIN_X 430
+#define RECORD_MAX_X 744
+#define RECORD_MIN_Y 690
+#define RECORD_MAX_Y 911
 
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
@@ -1073,7 +1074,10 @@ public:
 				temptext->rgb.emplace_back(Vector3f (r/255.f, g/255.f, b/255.f));
 			}
 		}
+		input.clear();
+		input.close();
 		textList.emplace_back(temptext);
 	}
+
 
 };
