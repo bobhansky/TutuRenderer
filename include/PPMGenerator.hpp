@@ -19,12 +19,12 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 1024;
+int SPP = 16;
 float SPP_inv = 1.f / SPP;
 //float Russian_Roulette = 0.78f;
 
-#define EXPEDITE true		// BVH to expedite intersection
-#define MULTITHREAD			// multi threads to expedite, comment it out for better ebug
+#define EXPEDITE 1		// BVH to expedite intersection
+#define MULTITHREAD	1		// multi threads to expedite, comment it out for better ebug
 #define N_THREAD 20
 #define MIS	1			// Multiple Importance Sampling
 #define GAMMA_COORECTION 
@@ -1078,6 +1078,4 @@ public:
 		input.close();
 		textList.emplace_back(temptext);
 	}
-
-
 };

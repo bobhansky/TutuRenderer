@@ -119,7 +119,7 @@ public:
 		// trace ray: cast a ray from eyePos through each pixel
 		// try to get the tNear and its intersection properties
 
-#ifdef MULTITHREAD
+#if MULTITHREAD
 		int rowPerthd = g->height / N_THREAD;
 		std::thread thds[N_THREAD];
 
@@ -170,7 +170,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 1026 && y == 618) {
+				if (x == 613 && y == 833) {
 					PRINT = true;
 				}
 
@@ -193,7 +193,7 @@ public:
 				// trace ray into each pixel
 				Vector3f estimate;
 				for (int i = 0; i < SPP; i++) {
-					estimate = estimate + traceRay(eyeLocation, rayDir, 0);
+					estimate = estimate + traceRay(eyeLocation, rayDir, 0, 1);
 				}
 				estimate = estimate * SPP_inv;
 
