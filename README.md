@@ -60,7 +60,7 @@ right: Path Tracing
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png)
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png" width="1024" height="1024" />
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png"/>
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/MIS-4.png)
 
