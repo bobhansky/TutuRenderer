@@ -293,6 +293,8 @@ float D_ndf(const Vector3f& h, const Vector3f& n, float roughness) {
 	cos_nh_2 = std::max(cos_nh_2, 0.f);
 	float sin_nh_2 = 1 - cos_nh_2;
 	float sum = alpha * alpha * cos_nh_2 + sin_nh_2;
+	if (sum == 0)
+		return 1;
 	float res = (alpha * alpha) / (M_PI * (sum * sum));
 
 	return res;
