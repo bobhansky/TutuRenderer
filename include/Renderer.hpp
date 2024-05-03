@@ -41,7 +41,7 @@ struct Thread_arg {
 	Renderer* r;
 };
 
-std::vector<std::string> records;
+std::vector<std::string> records;	// ray information, thread independent string
 
 void sub_render(Thread_arg*, int, int, int);
 
@@ -135,7 +135,11 @@ public:
 				g->width,
 				this
 			};
+#if RECORD
+			thds[i] = std::thread(sub_render_record, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
+#else
 			thds[i] = std::thread(sub_render, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
+#endif
 		}
 		// last thread
 		Thread_arg arg_end{
@@ -149,7 +153,11 @@ public:
 				g->width,
 				this
 		};
+#if RECORD
+		thds[N_THREAD - 1] = std::thread(sub_render_record, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
+#else
 		thds[N_THREAD - 1] = std::thread(sub_render, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
+#endif
 
 		for (int i = N_THREAD - 1; i >= 0; i--) {
 			thds[i].join();
@@ -210,27 +218,23 @@ public:
 
 	// -dir is the wo, trace a ray into the scene and update intersection
 	// use Russian Roulette to terminate
-	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth, Vector3f tp,	Intersection* nxtInter = nullptr, int thdID = -1, bool recording = false) {
+	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth, Vector3f tp, 
+		Intersection* nxtInter = nullptr, int thdID = -1, bool recording = false) {
+
 #if RECORD
 		if (recording) {
-			records[thdID].append(" ***Depth=" + std::to_string(depth) +
-				": rOrig" + origin.toString() + ", "
-				+ "rDir" + dir.toString());
+			records[thdID].append("\n***Depth=" + std::to_string(depth) +": Orig" + origin.toString() 
+				+ ", "+ "Dir" + dir.toString());
 		}
 #endif
-
 		if (depth > MAX_DEPTH) return 0;
 
 		Vector3f sampleValue = 0;
-
 		Intersection inter;
 		// const Class &: const lvalue reference
 		// get intersection
 		if (nxtInter)	inter = *nxtInter;
 		else interStrategy->UpdateInter(inter, this->g->scene, origin, dir);
-
-		// TEXTURE
-		textureModify(inter);
 
 		// if UNLIT material, return diffuse
 		if (inter.mtlcolor.mType == UNLIT) return inter.mtlcolor.diffuse;
@@ -244,6 +248,9 @@ public:
 		}
 		Vector3f wo = -dir;
 
+		// TEXTURE
+		if(inter.obj->isTextureActivated)
+			textureModify(inter);
 
 #if MIS
 		// ******************* direct illumination ********************
@@ -278,7 +285,7 @@ public:
 				mis_weight_l = getMisWeight(light_pdf, mat_pdf);
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = light_inter.mtlcolor.emission;
-				if (r2 * pdfl < MIN_PDF) return sampleValue;
+				if (r2 * pdfl < MIN_DIVISOR) return sampleValue;
 				sampleValue = sampleValue +
 					(mis_weight_l * L_i * f_r * cos_theta * cos_theta_prime / (r2 * pdfl));
 			}
@@ -314,7 +321,7 @@ jmp:
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = x_inter.mtlcolor.emission;
 				
-				if (mat_pdf < MIN_PDF) return sampleValue;
+				if (mat_pdf < MIN_DIVISOR) return sampleValue;
 				sampleValue = sampleValue +
 					(mis_weight_m * L_i * f_r * cos_theta / mat_pdf);
 				return sampleValue;
@@ -329,16 +336,14 @@ jmp2:
 
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f coe =  f_r * cos_theta / (mat_pdf * rr_prob);
+				if (mat_pdf * rr_prob < MIN_DIVISOR) return sampleValue;
 				tp = tp * coe;
 				Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp , &x_inter, thdID, recording );
-#if RECORD
-				if (recording) {
-					records[thdID].append(" ***Depth=" + std::to_string(depth+1) +
-						"[returns]" + Li.toString() + "\n");
-				}
-#endif
 
-				if (mat_pdf < MIN_PDF) return sampleValue;
+#if RECORD
+				if (recording) 
+					records[thdID].append("\nDepth " + std::to_string(depth+1) +"[ret]" + Li.toString() );
+#endif
 				sampleValue = sampleValue + (Li * coe);
 			}
 			// 4/30/2024
@@ -372,8 +377,7 @@ jmp2:
 				Vector3f p_to_light = normalized(light_inter.pos - inter.pos);
 				float cos_theta_prime = light_N.dot(-p_to_light);
 				// if light does not illuminate this direction (p_to_light is on the back side of the light)
-				if (cos_theta_prime < 0) {
-				}
+				if (cos_theta_prime < 0) {}
 				else {
 					float dis2 = (light_inter.pos - inter.pos).norm2();
 					float cos_theta = p_to_light.dot(inter.nDir);
@@ -385,10 +389,6 @@ jmp2:
 		}
 
 		// ****** Indirect Illumination
-		//// test RussianRoulette
-		//if (getRandomFloat() > Russian_Roulette)
-		//	return sampleValue;
-
 		float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
 		tp = depth > MIN_DEPTH ? tp : 1;
 		if (getRandomFloat() > rr_prob)
@@ -411,11 +411,10 @@ jmp2:
 			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
 			Vector3f coe = f_r * cos_theta / (pdf * rr_prob);
 			tp = tp * coe;
+			if (pdf * rr_prob < MIN_DIVISOR) return sampleValue;
 			Vector3f Li = traceRay(rayOrig, p_to_x_dir, depth + 1, tp, &x_inter);
 
-			if (pdf < MIN_PDF) return sampleValue;
 			indir_illu = indir_illu + (Li * coe);
-
 		}
 
 		sampleValue = sampleValue + dir_illu + indir_illu;
@@ -748,13 +747,46 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 	Renderer* r = arg.r;
 	PPMGenerator* g = r->g;
 
+	for (int y = s; y < e; y++) {
+		for (int x = 0; x < Ncol; x++) {
+			Vector3f& color = rgb_array->at(g->getIndex(x, y));
+			Vector3f rayDir = { 0,0,0 };
+			Vector3f pixelPos = ul + x * delta_h + y * delta_v + c_off_v + c_off_v;
+			rayDir = normalized((pixelPos - eyePos));
+
+			// trace ray into each pixel
+			Vector3f estimate;
+			for (int i = 0; i < SPP; i++) {
+				Vector3f res = r->traceRay(eyePos, rayDir, 0, Vector3f(1),nullptr, threadID, true);
+				if(!isnan(res.x) && !isnan(res.y) && !isnan(res.z))	// wipe out the white noise
+					estimate = estimate + res;	
+			}
+			color = estimate * SPP_inv;
+		}
+	}
+}
+
+// for recording
 #if RECORD
+void sub_render_record(Thread_arg* a, int threadID, int s, int e) {
+	Thread_arg arg = *a;
+
+	const Vector3f ul = *arg.ul;
+	const Vector3f delta_v = *arg.delta_v;
+	const Vector3f delta_h = *arg.delta_h;
+	const Vector3f c_off_h = *arg.c_off_h;
+	const Vector3f c_off_v = *arg.c_off_v;
+	std::vector<Vector3f>* rgb_array = &(arg.output->rgb);
+	const Vector3f eyePos = *arg.eyePos;
+	int Ncol = arg.Ncol;
+	Renderer* r = arg.r;
+	PPMGenerator* g = r->g;
+
 	std::ofstream fout;
 	std::string outfileName;
-	outfileName.append("./Records/" + std::to_string(s) + "_to_" + std::to_string(e) + ".txt");
+	outfileName.append("./Records/" + std::to_string(s) + "to" + std::to_string(e) + ".txt");
 	fout.open(outfileName);
-	
-#endif
+
 
 	for (int y = s; y < e; y++) {
 		for (int x = 0; x < Ncol; x++) {
@@ -763,47 +795,49 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 			Vector3f pixelPos = ul + x * delta_h + y * delta_v + c_off_v + c_off_v;
 			rayDir = normalized((pixelPos - eyePos));
 
-#if RECORD
 			if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) {
-				records[threadID].append("\n--------------\n(" + std::to_string(x) + ", " + std::to_string(y) + "): \n");
+				records[threadID].append("\n------------\n(" + std::to_string(x) + ", " + std::to_string(y) + "): \n");
 			}
-#endif
 
 			// trace ray into each pixel
 			Vector3f estimate;
 			for (int i = 0; i < SPP; i++) {
-#if RECORD
+
 				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X)
-					records[threadID].append("\n   SPP = " + std::to_string(i));
-#endif
+					records[threadID].append("\n  SPP = " + std::to_string(i)) + "\n";
 
-				Vector3f res = r->traceRay(eyePos, rayDir, 0, Vector3f(1),nullptr, threadID, true);
-				estimate = estimate + res;	
-				
 
-#if RECORD
-				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) 
-					fout << records[threadID] << "\n";
-#endif
-				records[threadID].clear();
+				Vector3f res = r->traceRay(eyePos, rayDir, 0, Vector3f(1), nullptr, threadID, true);
+				if (!isnan(res.x) && !isnan(res.y) && !isnan(res.z))
+					estimate = estimate + res;
+
+
+				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X)
+					records[threadID].append("  SPP = " + std::to_string(i) + " val: " + res.toString() + "\n");
+
 			}
 			estimate = estimate * SPP_inv;
-
 			color = estimate;
+
+
+
+			if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) {
+				fout << records[threadID] << "\n[Pixel(" + std::to_string(x) + ", " + std::to_string(y) + ") val]: "
+					+ estimate.toString() + "\n";
+			}
+			records[threadID].clear();
 		}
 	}
-#if RECORD
 	fout.close();
-#endif
 }
-
+#endif
 
 float getMisWeight(float pdf, float otherPdf) {
 	// balance heuristic
-	return pdf / (pdf + otherPdf);
+	//return pdf / (pdf + otherPdf);
 
 	// power heuristic
-	//return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
+	return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
 }
 
 
