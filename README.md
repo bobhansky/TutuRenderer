@@ -56,7 +56,7 @@ right: Path Tracing
 ### others  
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/junge.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/rust.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1600_512spp.png)
+![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png)
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png)
