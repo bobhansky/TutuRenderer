@@ -43,7 +43,8 @@ A CPU based Path Tracer for personal interest and education.
 
 # Sample Result
 ### Cornell Box with 512 samples per pixel    
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/spp512_1900sec.png)
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/spp512_1900sec.png" width=500 height=500/> 
+
 
 -----------------------------
 ### Contrast  
@@ -54,14 +55,14 @@ right: Path Tracing
 
 ----------------------------
 ### others  
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/junge.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/rust.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png)
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png)
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png"/>
-![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png)
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/junge.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/rust.png" width=500 height=500/>
+
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png" width=500 height=500/> 
+
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=500 height=500/>
+
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png" width=500 height=500/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/buddha.png" width=500 height=500/> 
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/MIS-4.png)
 
 <pre>
