@@ -59,7 +59,7 @@ right: Path Tracing
 
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/gkass_sphere.png" width=500 height=500/> 
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=500 height=500/>
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png" width=500 height=500/> 
 
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png" width=500 height=500/> 
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/buddha.png" width=500 height=500/> 
