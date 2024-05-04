@@ -841,4 +841,3 @@ float getMisWeight(float pdf, float otherPdf) {
 }
 
 
-
