@@ -668,7 +668,7 @@ jmp2:
 			wi = getReflectionDir(wo, N);
 			pdf = 1;
 		}
-		Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i);
+		// Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i);
 
 		Vector3f rayOrig = inter.pos;
 		float cos = 0;
@@ -682,7 +682,7 @@ jmp2:
 		}
 		Vector3f res = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 
-		return res * cos * f_r / pdf;// *cos * f_r / pdf;
+		return res;// *cos* f_r / pdf;// *cos * f_r / pdf;
 	}
 
 	float getLightPdf(Intersection& inter) {

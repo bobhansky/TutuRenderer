@@ -19,7 +19,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 64;
 float SPP_inv = 1.f / SPP;
 //float Russian_Roulette = 0.78f;
 
@@ -29,7 +29,7 @@ float SPP_inv = 1.f / SPP;
 #define MIS	1			// Multiple Importance Sampling
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
-#define MAX_DEPTH 7
+#define MAX_DEPTH 8
 #define MIN_DEPTH 3
 #define MIN_DIVISOR 0.03f
 
