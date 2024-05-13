@@ -117,7 +117,19 @@ public:
 	{
 		return Vector3f(x + v.x, y + v.y, z + v.z);
 	}
-	Vector3f operator - () const 
+	void operator+=(const Vector3f& v)
+	{
+		x = x + v.x;
+		y = y + v.y;
+		z = z + v.z;
+	}
+	void operator-=(const Vector3f& v)
+	{
+		x = x - v.x;
+		y = y - v.y;
+		z = z - v.z;
+	}
+	Vector3f operator -() const 
 	{ 
 		return Vector3f(-x, -y, -z); 
 	}

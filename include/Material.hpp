@@ -7,7 +7,7 @@
 
 enum MaterialType {
 	LAMBERTIAN,	// cosine weighted
-	SPECULAR_REFLECTIVE,
+	PERFECT_REFLECTIVE,
 	PERFECT_REFRACTIVE,
 	MICROFACET,	// Cook Torrance Microfacet model  with GGX dist
 	UNLIT
@@ -20,10 +20,6 @@ public:
 	Vector3f specular = Vector3f(1.f);
 	Vector3f emission = Vector3f(0.f);
 	MaterialType mType = LAMBERTIAN;
-	float ka = 0;
-	float kd = 0;
-	float ks = 0;			// if ks = 0, then the material is non-reflective
-	float n = 0;			// highlights shininess power coefficient
 
 	float alpha = 1;		// opacity		if alpha = 1. then no refraction 
 	float eta = 1;			// index of refraction
@@ -43,11 +39,6 @@ public:
 			this->specular.z = other.specular.z;
 			this->emission = other.emission;
 			this->mType = other.mType;
-
-			this->ka = other.ka;
-			this->kd = other.kd;
-			this->ks = other.ks;
-			this->n = other.n;
 
 			this->alpha = other.alpha;
 			this->eta = other.eta;
@@ -98,19 +89,38 @@ public:
 			Vector3f ref_term = fr;
 			// return ref_term;	// used for MIS testing
 			return diffuse_term + ref_term;
-
 		}
 
-		case SPECULAR_REFLECTIVE:
-		{
-			// https://www.youtube.com/watch?v=sg2xdcB8M3c
-			return 1 / N.dot(wi);
+		case PERFECT_REFLECTIVE:{
+			if (FLOAT_EQUAL(normalized(wi + wo).dot(N), 1.f))
+				// https://www.youtube.com/watch?v=sg2xdcB8M3c
+				return 1 / N.dot(wi);
+			return 0;
 			break;
 		}
 
 		case PERFECT_REFRACTIVE: {	// todo list
-			return 0;
-			break;
+			// https://www.youtube.com/watch?v=sg2xdcB8M3c
+			Vector3f refDir = normalized(getReflectionDir(wo, N));
+			float eta_i = eta_scene;
+			float eta_t = this->eta;
+			float F;
+			if (wo.dot(N) < 0) {
+				N = -N;
+				std::swap(eta_i, eta_t);
+				F = fresnel(wi, N, eta_i, eta_t);
+			}
+			else F = fresnel(wi, N, eta_i, eta_t);
+			Vector3f transDir = normalized(getRefractionDir(wo, N, eta_i, eta_t));
+
+
+			if (FLOAT_EQUAL(wi.dot(refDir), 1.f))
+				return F * 1 / abs(N.dot(wi));
+			else if(FLOAT_EQUAL(wi.dot(transDir), 1.f)) 
+				return (std::pow(eta_t, 2)/ std::pow(eta_i, 2)) * (1 - F) * abs(1 / N.dot(wi));
+			
+			return Vector3f(0.f);
+			break;			
 		}
 
 		default:
@@ -122,9 +132,8 @@ public:
 
 	// sample a direction on the hemisphere
 	// wi: incident dir, pointing outward
-	bool sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes,
-		const float eta_i = 0.f, const float eta_t = 0.f) {
-
+	// when passed in, eta_i is always eta_world
+	bool sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes, float eta_i = 0.f) {
 		switch (mType)
 		{
 		case MICROFACET:
@@ -142,7 +151,7 @@ public:
 
 			float r = std::sin(theta);
 			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
-			Vector3f res = getReflectionDir(-wi, SphereLocal2world(N, h));
+			Vector3f res = getReflectionDir(wi, SphereLocal2world(N, h));
 			res = normalized(res);
 			if (res.dot(N) <= 0)	// very crucial for white noise ??
 				return false;
@@ -189,17 +198,24 @@ public:
 			break;
 		}
 
-		case SPECULAR_REFLECTIVE: {
-			sampledRes = getReflectionDir(-wi, N);
+		case PERFECT_REFLECTIVE: {
+			sampledRes = getReflectionDir(wi, N);
 			return true;
 			break;
 		}
 		case PERFECT_REFRACTIVE: {
-			float F = fresnel(-wi, N, eta_i, eta);
-			if (getRandomFloat() < F) {
-				sampledRes = getReflectionDir(-wi, N);
+			float eta_t = eta;
+			Vector3f interN = N;
+			if (wi.dot(N) < 0) {
+				std::swap(eta_i, eta_t);
+				interN = -interN;
 			}
-			else sampledRes = getRefractionDir(-wi, N, eta_i, eta_t);
+
+			float F = fresnel(wi, interN, eta_i, eta_t);
+			if (getRandomFloat() < F) {
+				sampledRes = getReflectionDir(wi, interN);
+			}
+			else sampledRes = getRefractionDir(wi, interN, eta_i, eta_t);
 
 			return true;
 			break;
@@ -239,6 +255,7 @@ public:
 	}
 
 	// wo: -camera dir   wi: sampled dir
+	// when passed in, eta_i is always eta_world, eta_t is always ior of inter.material
 	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float eta_i = 0.f, float eta_t = 0.f) const {
 		switch (mType)
 		{
@@ -261,19 +278,31 @@ public:
 			return D_ndf(h, N, roughness) * cosTheta / (4.f * wo.dot(h));
 			break;
 		}
-		case SPECULAR_REFLECTIVE: {
-			// if(normalized(wi+wo).dot(N) == 1)
-			return 1;
-			// return 0;
+		case PERFECT_REFLECTIVE: {
+			if(FLOAT_EQUAL(normalized(wi+wo).dot(N), 1.f))
+				return 1;
+			 return 0;
 			break;
 		}
 
 		case PERFECT_REFRACTIVE: {
-			float F = fresnel(-wi, N, eta_i, this->eta);
-			if (wi.dot(N) < 0)
+			Vector3f refDir = normalized(getReflectionDir(wo, N));
+			Vector3f nDir = N;
+			if (wo.dot(nDir) < 0) {
+				std::swap(eta_i, eta_t);
+				nDir = -N;
+			}
+			Vector3f transDir = normalized(getRefractionDir(wo, nDir, eta_i, eta_t));
+
+			float F = fresnel(wo, nDir, eta_i, eta_t);
+
+			// check which direction is sampled 
+			if (FLOAT_EQUAL(wi.dot(refDir), 1.f))
+				return F;
+			else if (FLOAT_EQUAL(wi.dot(transDir), 1.f))
 				return 1 - F;
 
-			return F;
+			return 0;
 			break;
 		}
 

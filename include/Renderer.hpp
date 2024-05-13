@@ -48,6 +48,8 @@ void sub_render(Thread_arg*, int, int, int);
 
 float getMisWeight(float pdf, float otherPdf);
 
+void offsetRayOrig(Vector3f&, Vector3f, bool);
+
 
 /// <summary>
 /// this is the class perform computer graphics algorithms
@@ -130,7 +132,7 @@ public:
 				&delta_h,
 				&c_off_h,
 				&c_off_v,
-				&g->output,
+		+		&g->output,
 				&eyePos,
 				g->width,
 				this
@@ -164,13 +166,13 @@ public:
 		}
 
 
-		// single thread
+		// Single thread
 #else
 		for (int y = 0; y < g->height; y++) {
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 613 && y == 833) {
+				if (x == 585 && y == 644) {
 					PRINT = true;
 				}
 
@@ -193,7 +195,7 @@ public:
 				// trace ray into each pixel
 				Vector3f estimate;
 				for (int i = 0; i < SPP; i++) {
-					estimate = estimate + traceRay(eyeLocation, rayDir, 0, 1);
+					estimate = estimate + traceRay(eyeLocation, rayDir, 0, Vector3f(1.f));
 				}
 				estimate = estimate * SPP_inv;
 
@@ -243,14 +245,16 @@ public:
 		if (!inter.intersected)		return g->bkgcolor;
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
-		if (inter.mtlcolor.hasEmission()) {
-			return inter.mtlcolor.emission;
-		}
+		if (inter.mtlcolor.hasEmission())  return inter.mtlcolor.emission;
+		
 		Vector3f wo = -dir;
 
 		// TEXTURE
 		if(inter.obj->isTextureActivated)
 			textureModify(inter);
+
+		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE) 
+			return calcForRefractive(origin, dir, inter, depth);
 
 #if MIS
 		// ******************* direct illumination ********************
@@ -262,14 +266,18 @@ public:
 		float mis_weight_m = 0.f;
 		Intersection light_inter;
 		sampleLight(light_inter, light_pdf);
-		if (!light_inter.intersected || isShadowRayBlocked(inter, light_inter.pos)) {}
+
+		bool rayInside = inter.nDir.dot(wo) < 0;
+		Vector3f shadowRayOrig = inter.pos; 
+		offsetRayOrig(shadowRayOrig, inter.nDir, rayInside);
+		if (!light_inter.intersected || isShadowRayBlocked(shadowRayOrig, light_inter.pos)) {}
 		else {
 			Vector3f wi = light_inter.pos - inter.pos;
 			float r2 = wi.norm2();
 			wi = normalized(wi);
 			if (wi.dot(light_inter.nDir) > 0) {}
 			else {
-				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);	// w.r.t solid angle
+				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);	// w.r.t solid angle
 				Vector3f light_N = normalized(light_inter.nDir);
 				float cos_theta_prime = light_N.dot(-wi);
 				if (cos_theta_prime <= 0) goto jmp;
@@ -294,17 +302,19 @@ public:
 		// *********************** Sample BSDF ********************
 jmp:
 		Vector3f wi; 
-		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, wi))
+		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta))
 			return sampleValue;
 
-		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir);
+		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);
 		Intersection x_inter;
-		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
+		Vector3f rayOrig = inter.pos;
+		offsetRayOrig(rayOrig, inter.nDir, wi.dot(inter.nDir) < 0);
+
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		if (!x_inter.intersected) {}
 		else {
-			float dot = inter.nDir.dot(wi);
-			float cos_theta = dot < 0 ? 0 : dot;
+			float dot = abs(inter.nDir.dot(wi));
+			float cos_theta = dot;
 
 			light_pdf = getLightPdf(x_inter);
 			if (light_pdf) {
@@ -317,7 +327,10 @@ jmp:
 				// pdf_l = pdf_m * cos_theta_prime / r2
 				float r2 = (x_inter.pos - inter.pos).norm2();
 				float l_pdf_transformed = light_pdf * r2 / cos_theta_prime;
+				
 				mis_weight_m = getMisWeight(mat_pdf, l_pdf_transformed);
+				if (inter.mtlcolor.mType == PERFECT_REFLECTIVE && mat_pdf == 1.f) 
+					mis_weight_m = 1.f;
 				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 				Vector3f L_i = x_inter.mtlcolor.emission;
 				
@@ -356,10 +369,8 @@ jmp2:
 
 
 #else // Next Event Estimation Only
-		if (inter.mtlcolor.mType == SPECULAR_REFLECTIVE)
+		if (inter.mtlcolor.mType == PERFECT_REFLECTIVE)
 			return calcForMirror(origin, dir, inter, depth);
-		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE)
-			return calcForRefractive(origin, dir, inter, depth);
 
 		Vector3f dir_illu(0.f);
 		Vector3f indir_illu(0.f);
@@ -370,7 +381,10 @@ jmp2:
 		if (!light_inter.intersected) {}
 		else {
 			// test if the ray is blocked in the middle 
-			if (isShadowRayBlocked(inter, light_inter.pos)) {}
+			bool rayInside = inter.nDir.dot(wo) < 0;
+			Vector3f shadowRayOrig = inter.pos;
+			offsetRayOrig(shadowRayOrig, inter.nDir, rayInside);
+			if (isShadowRayBlocked(shadowRayOrig, light_inter.pos)) {}
 			else {	// ray is not blocked, then calculate the direct illumination
 				Vector3f L_i = light_inter.mtlcolor.emission;
 				Vector3f light_N = normalized(light_inter.nDir);
@@ -429,9 +443,7 @@ jmp2:
 	/// <param name="p">inter information</param>
 	/// <param name="lightPos">light position</param>
 	/// <returns>if the ray is blocked by non-emissive obj, return true</returns>
-	bool isShadowRayBlocked(Intersection& p, Vector3f& lightPos) {
-		Vector3f orig = p.pos;
-		orig = orig + EPSILON * p.nDir;
+	bool isShadowRayBlocked(Vector3f orig, Vector3f& lightPos) {
 		Vector3f raydir = normalized(lightPos - orig);
 		float distance = (lightPos - orig).norm();
 
@@ -450,7 +462,6 @@ jmp2:
 			return hasIntersection(g->scene.BVHaccelerator->getNode(), orig, raydir, distance);
 		}
 	}
-
 
 
 	// TBN transformation matrix to change the dir of normal
@@ -600,7 +611,7 @@ jmp2:
 	}
 
 	/// <summary>
-	/// special case for perfect specular reflection if res is calculated by dir illu + indir illu
+	/// special case for NEE perfect specular reflection if res is calculated by dir illu + indir illu
 	/// calculate color if hit on lights
 	/// </summary>
 	/// <param name="origin"> ray origin </param>
@@ -610,23 +621,22 @@ jmp2:
 	/// <returns></returns>
 	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
 		if (depth > MAX_DEPTH) return 0;	// 2 mirror reflect forever causing stack overflow
-		Vector3f p_to_x_dir;
-		inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir, p_to_x_dir);
+		Vector3f wi;
+		inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir, wi);
 
-		p_to_x_dir = normalized(p_to_x_dir);
+		wi = normalized(wi);
 
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
-		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
+		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		if (x_inter.intersected) {
-			// float cos_pnormal_xdir = inter.nDir.dot(p_to_x_dir);
-			// Vector3f wo = -dir;
-			// float pdf = inter.mtlcolor.pdf(wo, p_to_x_dir, inter.nDir);
-			// BRDF has reciprocity
-			// Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
+			float cos = inter.nDir.dot(wi);
+			Vector3f wo = -dir;
+			float pdf = inter.mtlcolor.pdf(wo, wi, inter.nDir);
+			Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 
-			Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1, Vector3f(1));
-			return res; // *f_r* cos_pnormal_xdir / pdf;
+			Vector3f res = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
+			return res * f_r * cos / pdf;
 		}
 		return 0;
 	}
@@ -647,41 +657,32 @@ jmp2:
 		Vector3f wo = -dir;
 		float eta_i = g->eta;
 		float eta_t = inter.mtlcolor.eta;
-		if (wo.dot(N) > 0) {
-		}
-		else {	// ray is inside the obj, then swap
-			eta_i += eta_t;
-			eta_t = eta_i - eta_t;
-			eta_i = eta_i - eta_t;
-			N = -N;
-		}
 
-		Vector3f p_to_x_dir;
-		inter.mtlcolor.sampleDirection(wo, N, p_to_x_dir, eta_i, eta_t);
-		p_to_x_dir = normalized(p_to_x_dir);
-		float pdf = inter.mtlcolor.pdf(p_to_x_dir, wo, N, eta_i, eta_t);
-		Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, N, eta_i);
-
+		Vector3f wi;
+		inter.mtlcolor.sampleDirection(wo, N, wi, eta_i);
+		wi = normalized(wi);
+		float pdf = inter.mtlcolor.pdf(wi, wo, N, eta_i, eta_t);
 
 		// total internal reflection
-		if (p_to_x_dir.norm() == 0.f) {
-			p_to_x_dir = getReflectionDir(dir, N);
+		if (wi.norm() == 0.f) {
+			wi = getReflectionDir(wo, N);
 			pdf = 1;
 		}
+		Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i);
 
 		Vector3f rayOrig = inter.pos;
-		float cos_pnormal_xdir = 0;
-		if (p_to_x_dir.dot(N) > 0) {	// if p_to_x is reflection ray
+		float cos = 0;
+		if (wi.dot(N) > 0) {	// if wi is reflection ray
 			rayOrig = rayOrig + N * EPSILON;
-			//cos_pnormal_xdir = N.dot(p_to_x_dir);
+			cos = N.dot(wi);
 		}
-		else {	// if p_to_x is refraction ray
+		else {	// if wi is refraction ray
 			rayOrig = rayOrig - N * EPSILON;
-			//cos_pnormal_xdir = (-N).dot(p_to_x_dir);	
+			cos = (-N).dot(wi);
 		}
-		Vector3f res = traceRay(rayOrig, p_to_x_dir, depth + 1, Vector3f(1));
+		Vector3f res = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 
-		return res; //* cos_pnormal_xdir * f_r / pdf;
+		return res * cos * f_r / pdf;// *cos * f_r / pdf;
 	}
 
 	float getLightPdf(Intersection& inter) {
@@ -840,4 +841,8 @@ float getMisWeight(float pdf, float otherPdf) {
 	return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
 }
 
+// avoid self colission when testing ray intersection
+void offsetRayOrig(Vector3f& orig, Vector3f interNormal, bool rayIsInside = false) {
+	rayIsInside ? orig -= interNormal * EPSILON : orig += interNormal * EPSILON;
+}
 
