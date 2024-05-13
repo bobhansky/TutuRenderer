@@ -594,24 +594,20 @@ public:
 			checkFloat(t0); checkFloat(t1); checkFloat(t2); checkFloat(t3);
 			checkFloat(t4); checkFloat(t5); checkFloat(t6); checkFloat(t7);
 			checkFloat(t8); checkFloat(t9);
-
-
 		}
 
 		// process mtlcolor
 		else if (key.compare("mtlcolor") == 0) {
-			// mtlcolor Odr Odg Odb Osr Osg Osb ka kd ks n 
-			std::string t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;		// temp string buffer
+			// mtlcolor Odr Odg Odb Osr Osg Osb 
+			std::string t0, t1, t2, t3, t4, t5; 		// temp string buffer
 			std::string t10, t11;									// alpha eta
 
 			checkFin(); fin >> t0; checkFin(); fin >> t1; checkFin(); fin >> t2;
 			checkFin(); fin >> t3; checkFin(); fin >> t4; checkFin(); fin >> t5;
-			checkFin(); fin >> t6; checkFin(); fin >> t7; checkFin(); fin >> t8;
-			checkFin(); fin >> t9; checkFin(); fin >> t10; checkFin(); fin >> t11;
+		 checkFin(); fin >> t10; checkFin(); fin >> t11;
 
 			checkFloat(t0); checkFloat(t1);checkFloat(t2); checkFloat(t3);
-			checkFloat(t4); checkFloat(t5); checkFloat(t6); checkFloat(t7);
-			checkFloat(t8); checkFloat(t9); checkFloat(t10); checkFloat(t11);
+			checkFloat(t4); checkFloat(t5); checkFloat(t10); checkFloat(t11);
 
 			// set mtlcolor
 			mtlcolor.diffuse.x = std::stof(t0);
@@ -621,11 +617,6 @@ public:
 			mtlcolor.specular.x = std::stof(t3);
 			mtlcolor.specular.y = std::stof(t4);
 			mtlcolor.specular.z = std::stof(t5);
-
-			mtlcolor.ka = std::stof(t6);
-			mtlcolor.kd = std::stof(t7);
-			mtlcolor.ks = std::stof(t8);
-			mtlcolor.n = std::stof(t9);
 
 			mtlcolor.alpha = std::stof(t10);
 			mtlcolor.eta = std::stof(t11);
@@ -655,9 +646,9 @@ public:
 			mtlcolor.metallic = std::stof(t6);
 		}
 
-		else if (key.compare("SPECULAR_REFLECTIVE") == 0) {
+		else if (key.compare("PERFECT_REFLECTIVE") == 0) {
 			// MICROFACET Odr Odg Odb alpha eta roughness metallic
-			mtlcolor.mType = SPECULAR_REFLECTIVE;
+			mtlcolor.mType = PERFECT_REFLECTIVE;
 		}
 
 		else if (key.compare("PERFECT_REFRACTIVE") == 0) {

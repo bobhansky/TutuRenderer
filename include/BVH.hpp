@@ -15,8 +15,8 @@
 struct BVHNode {
 	Object* obj;
 	BoundBox bound;
-	BVHNode* left;
-	BVHNode* right;
+	BVHNode* left = nullptr;
+	BVHNode* right = nullptr;
 
 	~BVHNode() {
 	}
