@@ -19,7 +19,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 64;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
 //float Russian_Roulette = 0.78f;
 
@@ -29,7 +29,7 @@ float SPP_inv = 1.f / SPP;
 #define MIS	1			// Multiple Importance Sampling
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
-#define MAX_DEPTH 8
+#define MAX_DEPTH 16
 #define MIN_DEPTH 3
 #define MIN_DIVISOR 0.03f
 
@@ -624,7 +624,7 @@ public:
 			isTextureOn = false;		// do not use texture data as Object diffuse term
 		}
 
-		else if (key.compare("MICROFACET") == 0) {
+		else if (key.compare("MICROFACET_R") == 0) {
 			// MICROFACET Odr Odg Odb alpha eta roughness metallic
 			std::string t0, t1, t2, t3, t4, t5, t6;
 
@@ -636,7 +636,7 @@ public:
 			checkFloat(t4); checkFloat(t5); checkFloat(t6);
 
 
-			mtlcolor.mType = MICROFACET;
+			mtlcolor.mType = MICROFACET_R;
 			mtlcolor.diffuse.x = std::stof(t0);
 			mtlcolor.diffuse.y = std::stof(t1);
 			mtlcolor.diffuse.z = std::stof(t2);

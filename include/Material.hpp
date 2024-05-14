@@ -9,7 +9,8 @@ enum MaterialType {
 	LAMBERTIAN,	// cosine weighted
 	PERFECT_REFLECTIVE,
 	PERFECT_REFRACTIVE,
-	MICROFACET,	// Cook Torrance Microfacet model  with GGX dist
+	MICROFACET_R,	// MICROFACET_REFLECTIVE, Cook Torrance Microfacet model  with GGX dist
+	MICROFACET_T,	// MICROFACET_TRANSMISSIVE
 	UNLIT
 };
 
@@ -57,7 +58,7 @@ public:
 	// wi, wo: origin at inter.pos center, pointing outward
 	// wi: incident ray
 	// wo: view dir
-	Vector3f BxDF(Vector3f& wi, Vector3f& wo, Vector3f& N, float eta_scene) {
+	Vector3f BxDF(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float eta_scene, bool TIR = false) {
 		switch (mType) {
 		case LAMBERTIAN: {
 			float cos_theta = wo.dot(N);
@@ -69,7 +70,7 @@ public:
 			break;
 		}
 
-		case MICROFACET: {
+		case MICROFACET_R: {
 			// Cook-Torrance Model
 
 			Vector3f h = normalized(wi + wo);
@@ -101,23 +102,28 @@ public:
 
 		case PERFECT_REFRACTIVE: {	// todo list
 			// https://www.youtube.com/watch?v=sg2xdcB8M3c
+			// https://www.pbr-book.org/3ed-2018/Reflection_Models/Specular_Reflection_and_Transmission#fragment-BxDFDeclarations-7
 			Vector3f refDir = normalized(getReflectionDir(wo, N));
 			float eta_i = eta_scene;
 			float eta_t = this->eta;
 			float F;
+			Vector3f interN = N;
 			if (wo.dot(N) < 0) {
-				N = -N;
+				interN = -N;
 				std::swap(eta_i, eta_t);
-				F = fresnel(wi, N, eta_i, eta_t);
 			}
-			else F = fresnel(wi, N, eta_i, eta_t);
-			Vector3f transDir = normalized(getRefractionDir(wo, N, eta_i, eta_t));
+			F = fresnel(wi, interN, eta_i, eta_t);
+			Vector3f transDir = normalized(getRefractionDir(wo, interN, eta_i, eta_t));
 
+			interN = interN.dot(wi) < 0 ? -interN : interN;
 
+			if (TIR) 
+				return 1 / interN.dot(wi);
 			if (FLOAT_EQUAL(wi.dot(refDir), 1.f))
-				return F * 1 / abs(N.dot(wi));
+				return F * 1 / interN.dot(wi);
 			else if(FLOAT_EQUAL(wi.dot(transDir), 1.f)) 
-				return (std::pow(eta_t, 2)/ std::pow(eta_i, 2)) * (1 - F) * abs(1 / N.dot(wi));
+				// 5/13/2024  this term make some faces bright? idk if it's correct
+				return /*(eta_t * eta_t) / (eta_i * eta_i)* */ (1 - F) * 1 / interN.dot(wi);
 			
 			return Vector3f(0.f);
 			break;			
@@ -136,8 +142,7 @@ public:
 	bool sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes, float eta_i = 0.f) {
 		switch (mType)
 		{
-		case MICROFACET:
-		{
+		case MICROFACET_R: {
 			if (wi.dot(N) <= 0.0f) 
 				return false;		// crucial
 			
@@ -268,7 +273,7 @@ public:
 
 			break;
 		}
-		case MICROFACET: {
+		case MICROFACET_R: {
 			// corresponds to normal distribution function D
 			// https://www.tobias-franke.eu/log/2014/03/30/notes_on_importance_sampling.html
 			Vector3f h = normalized(wo + wi);
@@ -294,7 +299,7 @@ public:
 			}
 			Vector3f transDir = normalized(getRefractionDir(wo, nDir, eta_i, eta_t));
 
-			float F = fresnel(wo, nDir, eta_i, eta_t);
+			float F = fresnel(wi, nDir, eta_i, eta_t);
 
 			// check which direction is sampled 
 			if (FLOAT_EQUAL(wi.dot(refDir), 1.f))
