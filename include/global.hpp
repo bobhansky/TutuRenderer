@@ -228,7 +228,6 @@ float fresnel(const Vector3f& Incident, const Vector3f& normal, const float eta_
 	// The Schlick approximation defines the Fresnel
 	// reflectance coefficient using the function :
 	// Fr = F0 + (1–F0 )(1–cos(theta_i))^5
-
 	// Schlick approximation: a faster approach to define F0
 	float F0 = powf(((eta_t - eta_i) / (eta_t + eta_i)), 2.f);	
 	float Fr = F0 + (1 - F0) * (powf(1 - (I.dot(N)), 5.f));
@@ -305,7 +304,7 @@ float D_ndf(const Vector3f& h, const Vector3f& n, float roughness) {
 /// <param name="n">: normal</param>
 /// <param name="roughness">: width parameter alpha_g </param>
 /// <returns> the fraction of unblocked part, [0,1]</returns>
-float G_smf(Vector3f& wi, Vector3f& wo, Vector3f& n, float roughness) {
+float G_smf(const Vector3f& wi, const Vector3f& wo, const Vector3f& n, float roughness) {
 	float alpha = roughness * roughness;
 	float angle_wi_n = acosf(wi.dot(n));
 	float angle_wo_n = acosf(wo.dot(n));

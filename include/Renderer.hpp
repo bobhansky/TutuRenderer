@@ -172,7 +172,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 585 && y == 644) {
+				if (x == 453 && y == 776) {
 					PRINT = true;
 				}
 
@@ -253,7 +253,8 @@ public:
 		if(inter.obj->isTextureActivated)
 			textureModify(inter);
 
-		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE) 
+		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE
+			|| inter.mtlcolor.mType == MICROFACET_R)
 			return calcForRefractive(origin, dir, inter, depth);
 
 #if MIS
@@ -342,8 +343,8 @@ jmp:
 			// ******************* direct illumination ENDS ********************
 			else {	// indirect illumination
 jmp2:
-				float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
 				tp = depth > MIN_DEPTH ? tp : 1;
+				float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
 				if (getRandomFloat() > rr_prob)
 					return sampleValue;
 
@@ -403,30 +404,31 @@ jmp2:
 		}
 
 		// ****** Indirect Illumination
-		float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
 		tp = depth > MIN_DEPTH ? tp : 1;
+		float rr_prob = std::max(tp.x, std::max(tp.y, tp.z));
 		if (getRandomFloat() > rr_prob)
 			return sampleValue;
 
 		// inter point p to another point x
-		Vector3f p_to_x_dir;
-		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, p_to_x_dir))
+		Vector3f wi;
+		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta))
 			return sampleValue;
 
 		Intersection x_inter;
-		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
-		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, p_to_x_dir);
+		bool rayInside = inter.nDir.dot(wi) < 0;
+		Vector3f rayOrig = inter.pos;
+		offsetRayOrig(rayOrig, inter.nDir, rayInside);
+		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		// calculate only when inter is on a non-emissive object
 		if (x_inter.intersected && !x_inter.mtlcolor.hasEmission()) {
+			float pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);
+			float cos_theta = abs(inter.nDir.dot(wi));
 
-			float pdf = inter.mtlcolor.pdf(p_to_x_dir, wo, inter.nDir);
-			float cos_theta = std::max(0.f, inter.nDir.dot(p_to_x_dir));
-
-			Vector3f f_r = inter.mtlcolor.BxDF(p_to_x_dir, wo, inter.nDir, g->eta);
+			Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
 			Vector3f coe = f_r * cos_theta / (pdf * rr_prob);
 			tp = tp * coe;
-			if (pdf * rr_prob < MIN_DIVISOR) return sampleValue;
-			Vector3f Li = traceRay(rayOrig, p_to_x_dir, depth + 1, tp, &x_inter);
+			if (pdf * rr_prob < MIN_DIVISOR) return sampleValue + dir_illu;
+			Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp, &x_inter);
 
 			indir_illu = indir_illu + (Li * coe);
 		}
@@ -651,7 +653,6 @@ jmp2:
 	/// <returns></returns>
 	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
 		if (depth > MAX_DEPTH) return 0;
-
 		Vector3f N = inter.nDir;
 
 		Vector3f wo = -dir;
@@ -663,12 +664,14 @@ jmp2:
 		wi = normalized(wi);
 		float pdf = inter.mtlcolor.pdf(wi, wo, N, eta_i, eta_t);
 
+		bool TIR = false;
 		// total internal reflection
 		if (wi.norm() == 0.f) {
-			wi = getReflectionDir(wo, N);
+			wi = normalized(getReflectionDir(wo, N));
 			pdf = 1;
+			TIR = true;
 		}
-		// Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i);
+		Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i, TIR);
 
 		Vector3f rayOrig = inter.pos;
 		float cos = 0;
@@ -682,7 +685,7 @@ jmp2:
 		}
 		Vector3f res = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 
-		return res;// *cos* f_r / pdf;// *cos * f_r / pdf;
+		return res * cos * f_r / pdf;
 	}
 
 	float getLightPdf(Intersection& inter) {
