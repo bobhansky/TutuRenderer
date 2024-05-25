@@ -50,6 +50,8 @@ float getMisWeight(float pdf, float otherPdf);
 
 void offsetRayOrig(Vector3f&, Vector3f, bool);
 
+void sub_render_record(Thread_arg*, int, int, int );
+
 
 /// <summary>
 /// this is the class perform computer graphics algorithms
@@ -172,7 +174,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 453 && y == 776) {
+				if (x == 695 && y == 658) {
 					PRINT = true;
 				}
 
@@ -254,8 +256,8 @@ public:
 			textureModify(inter);
 
 		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE
-			|| inter.mtlcolor.mType == MICROFACET_R)
-			return calcForRefractive(origin, dir, inter, depth);
+			|| inter.mtlcolor.mType == MICROFACET_T)
+			return calcForRefractive(origin, dir, inter, depth, thdID, recording);
 
 #if MIS
 		// ******************* direct illumination ********************
@@ -303,7 +305,8 @@ public:
 		// *********************** Sample BSDF ********************
 jmp:
 		Vector3f wi; 
-		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta))
+		auto [sampleSucess, specialEvent] = inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta);
+		if (!sampleSucess)
 			return sampleValue;
 
 		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);
@@ -352,6 +355,7 @@ jmp2:
 				Vector3f coe =  f_r * cos_theta / (mat_pdf * rr_prob);
 				if (mat_pdf * rr_prob < MIN_DIVISOR) return sampleValue;
 				tp = tp * coe;
+
 				Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp , &x_inter, thdID, recording );
 
 #if RECORD
@@ -411,7 +415,8 @@ jmp2:
 
 		// inter point p to another point x
 		Vector3f wi;
-		if (!inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta))
+		auto [sampleSucess, TIR] = inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta);
+		if (!sampleSucess)
 			return sampleValue;
 
 		Intersection x_inter;
@@ -651,7 +656,8 @@ jmp2:
 	/// <param name="inter"></param>
 	/// <param name="depth"></param>
 	/// <returns></returns>
-	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
+	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth,
+			int thdID = -1, bool recording = false) {
 		if (depth > MAX_DEPTH) return 0;
 		Vector3f N = inter.nDir;
 
@@ -659,17 +665,28 @@ jmp2:
 		float eta_i = g->eta;
 		float eta_t = inter.mtlcolor.eta;
 
-		Vector3f wi;
-		inter.mtlcolor.sampleDirection(wo, N, wi, eta_i);
+		Vector3f wi;		
+		auto[sampleSuccess, TIR] = inter.mtlcolor.sampleDirection(wo, N, wi, eta_i);
 		wi = normalized(wi);
 		float pdf = inter.mtlcolor.pdf(wi, wo, N, eta_i, eta_t);
 
-		bool TIR = false;
 		// total internal reflection
-		if (wi.norm() == 0.f) {
+		if (TIR) {
 			wi = normalized(getReflectionDir(wo, N));
 			pdf = 1;
-			TIR = true;
+			if (inter.mtlcolor.mType == MICROFACET_T) {
+				Vector3f interN = N;
+				if (wo.dot(N) < 0) {
+					interN = -N;
+					std::swap(eta_i, eta_t);
+				}
+				Vector3f h = normalized(wo + wi);
+				float F = fresnel(wo, interN, eta_i, eta_t);
+				float cosTheta = interN.dot(h);
+				cosTheta = abs(cosTheta);
+				wi = normalized(getReflectionDir(wo, h));
+				pdf = 1 * D_ndf(h, interN, inter.mtlcolor.roughness) * cosTheta / (4.f * wo.dot(h));
+			}
 		}
 		Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i, TIR);
 
@@ -683,9 +700,15 @@ jmp2:
 			rayOrig = rayOrig - N * EPSILON;
 			cos = (-N).dot(wi);
 		}
-		Vector3f res = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
+		Vector3f Li = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 
-		return res * cos * f_r / pdf;
+#if RECORD
+		if (recording)
+			records[thdID].append("\nDepth " + std::to_string(depth + 1) + "[ret]" + Li.toString());
+#endif
+		if (pdf < MIN_DIVISOR)
+			return 0;
+		return Li * cos * f_r / pdf;
 	}
 
 	float getLightPdf(Intersection& inter) {

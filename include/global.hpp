@@ -285,8 +285,10 @@ Vector3f getRefractionDir(const Vector3f& incident, const Vector3f& normal, floa
 /// <returns>return the area of microfacet with micro normal h in dA</returns>
 float D_ndf(const Vector3f& h, const Vector3f& n, float roughness) {
 	float alpha = roughness * roughness;
+	alpha = std::max(alpha, 1e-3f);
+	if (n.dot(h) < 0) 
+		return 0;
 	float cos_nh_2 = (n.dot(h)) * (n.dot(h));
-	cos_nh_2 = std::max(cos_nh_2, 0.f);
 	float sin_nh_2 = 1 - cos_nh_2;
 	float sum = alpha * alpha * cos_nh_2 + sin_nh_2;
 	if (sum == 0)
@@ -304,16 +306,16 @@ float D_ndf(const Vector3f& h, const Vector3f& n, float roughness) {
 /// <param name="n">: normal</param>
 /// <param name="roughness">: width parameter alpha_g </param>
 /// <returns> the fraction of unblocked part, [0,1]</returns>
-float G_smf(const Vector3f& wi, const Vector3f& wo, const Vector3f& n, float roughness) {
+float G_smf(const Vector3f& wi, const Vector3f& wo, const Vector3f& n, float roughness, const Vector3f& h) {
 	float alpha = roughness * roughness;
+	alpha = std::max(alpha, 1e-3f);
 	float angle_wi_n = acosf(wi.dot(n));
 	float angle_wo_n = acosf(wo.dot(n));
 	// in paper   Microfacet Models for Refraction through Rough Surface
-	float G1_wi = 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wi_n), 2)));
-	float G1_wo = 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wo_n), 2)));
+	float G1_wi = ((wi.dot(h)/wi.dot(n)) < 0 ? 0 : 1) * 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wi_n), 2)));
+	float G1_wo = ((wo.dot(h)/wo.dot(n)) < 0 ? 0 : 1) * 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wo_n), 2)));
 
 	return G1_wi * G1_wo;
-	// return clamp(0.f, 1.f, G1_wi * G1_wo);
 
 	
 	// a better G  according to https://zhuanlan.zhihu.com/p/434964126
