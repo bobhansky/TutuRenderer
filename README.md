@@ -28,7 +28,7 @@ A CPU based Path Tracer for personal interest and education.
 - Russian Roulette (Throughput)
 
 ## Todo List
-   - Microfacet refractive/translucent
+   - Microfacet refractive/translucent  ✅
    - BDPT 
    - don't rely on .ppm image file
 ## Usage
