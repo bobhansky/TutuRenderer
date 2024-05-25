@@ -6,7 +6,7 @@ A CPU based Path Tracer for personal interest and education.
    - Path Tracing
 - Matertial:
    - Lambertain Diffuse (cos weighted)
-   - Microfacet Reflectance (Cook Torrance Model with GGX distribution).
+   - Microfacet Reflection and Transmittance (Cook Torrance Model with GGX distribution).
    - Perfect Reflective
    - Perfect Refractive.
 - Sampling
