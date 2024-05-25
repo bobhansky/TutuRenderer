@@ -19,17 +19,17 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 1;
+int SPP = 128;
 float SPP_inv = 1.f / SPP;
 //float Russian_Roulette = 0.78f;
 
 #define EXPEDITE 1		// BVH to expedite intersection
 #define MULTITHREAD	1		// multi threads to expedite, comment it out for better ebug
 #define N_THREAD 20
-#define MIS	1			// Multiple Importance Sampling
+#define MIS	0			// Multiple Importance Sampling
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
-#define MAX_DEPTH 16
+#define MAX_DEPTH 4
 #define MIN_DEPTH 3
 #define MIN_DIVISOR 0.03f
 
@@ -37,10 +37,10 @@ float SPP_inv = 1.f / SPP;
 // if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
 // RECORD is only for std::treads multithreading
 #define RECORD 0		
-#define RECORD_MIN_X 430
-#define RECORD_MAX_X 744
-#define RECORD_MIN_Y 690
-#define RECORD_MAX_Y 911
+#define RECORD_MIN_X 576
+#define RECORD_MAX_X 610
+#define RECORD_MIN_Y 679
+#define RECORD_MAX_Y 727
 
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
@@ -624,7 +624,7 @@ public:
 			isTextureOn = false;		// do not use texture data as Object diffuse term
 		}
 
-		else if (key.compare("MICROFACET_R") == 0) {
+		else if (key.compare("MICROFACET_R") == 0 || key.compare("MICROFACET_T") == 0) {
 			// MICROFACET Odr Odg Odb alpha eta roughness metallic
 			std::string t0, t1, t2, t3, t4, t5, t6;
 
@@ -636,7 +636,7 @@ public:
 			checkFloat(t4); checkFloat(t5); checkFloat(t6);
 
 
-			mtlcolor.mType = MICROFACET_R;
+			mtlcolor.mType = key.compare("MICROFACET_R") == 0 ? MICROFACET_R : MICROFACET_T;
 			mtlcolor.diffuse.x = std::stof(t0);
 			mtlcolor.diffuse.y = std::stof(t1);
 			mtlcolor.diffuse.z = std::stof(t2);

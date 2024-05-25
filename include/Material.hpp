@@ -2,6 +2,7 @@
 
 #include "global.hpp"
 #include "Vector.hpp"
+#include <tuple>
 
 
 
@@ -79,10 +80,10 @@ public:
 			Vector3f F0(0.04f);	// should be 0.04			
 			F0 = lerp(F0, this->diffuse, this->metallic);
 			Vector3f F = fresnelSchlick(costheta, F0);	// learnopgl https://learnopengl.com/PBR/Theory
-			// float F = fresnel(-wi, h, eta_scene, this->eta);
+			// float F = fresnel(wo, h, eta_scene, this->eta);
 			float D = D_ndf(h, N, roughness);
 			//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
-			float G = G_smf(wi, wo, N, roughness);
+			float G = G_smf(wi, wo, N, roughness, h);
 			Vector3f fr = (F * G * D) / (4 * wi.dot(N) * wo.dot(N));	// originaly float fr
 
 			//fr = clamp(0, 1, fr);
@@ -91,16 +92,53 @@ public:
 			// return ref_term;	// used for MIS testing
 			return diffuse_term + ref_term;
 		}
+		case MICROFACET_T: {
+			float eta_i = eta_scene;
+			float eta_t = eta;
+			Vector3f interN = N;
+			if (wo.dot(N) < 0) {
+				interN = -N;
+				std::swap(eta_i, eta_t);
+			}
+			float F = fresnel(wo, interN, eta_i, eta_t);
+
+			// if wi is reflection dir
+			if (wi.dot(interN) >= 0) {
+				Vector3f h = normalized(wo + wi);
+				float cosTheta = h.dot(wo);
+				cosTheta = abs(cosTheta);
+				float F = fresnel(wo, h, eta_i, eta_t);
+				if (TIR) 
+					F = 1.f;
+				float D = D_ndf(h, interN, roughness);
+				float G = G_smf(wi, wo, interN, roughness, h);
+				Vector3f fr = (F * G * D) / (4 * wi.dot(interN) * wo.dot(interN));	// originaly float fr
+				return fr;
+			}
+			// wi is refraction dir
+			else {	// need h and jacobian 
+				Vector3f h = -normalized(eta_i * wo + eta_t * wi);
+				if (h.dot(interN) < 0) h = -h;
+				float cos_ih = wi.dot(h), cos_oh = wo.dot(h), 
+					cos_in = wi.dot(interN), cos_on = wo.dot(interN);
+				float F = fresnel(wo, h, eta_i, eta_t);
+				float D = D_ndf(h, interN, roughness);
+				float G = G_smf(wi, wo, interN, roughness, h);
+				float numerator = abs(cos_ih) * abs(cos_oh) * eta_t * eta_t * (1 - F) * G * D;
+				float denominator = abs(cos_in) * abs(cos_on) * std::powf(eta_i * cos_ih + eta_t * cos_oh, 2);
+				return numerator / denominator;
+			}
+		}
 
 		case PERFECT_REFLECTIVE:{
 			if (FLOAT_EQUAL(normalized(wi + wo).dot(N), 1.f))
 				// https://www.youtube.com/watch?v=sg2xdcB8M3c
-				return 1 / N.dot(wi);
+				return 1 /abs(N.dot(wi));
 			return 0;
 			break;
 		}
 
-		case PERFECT_REFRACTIVE: {	// todo list
+		case PERFECT_REFRACTIVE: {
 			// https://www.youtube.com/watch?v=sg2xdcB8M3c
 			// https://www.pbr-book.org/3ed-2018/Reflection_Models/Specular_Reflection_and_Transmission#fragment-BxDFDeclarations-7
 			Vector3f refDir = normalized(getReflectionDir(wo, N));
@@ -112,7 +150,7 @@ public:
 				interN = -N;
 				std::swap(eta_i, eta_t);
 			}
-			F = fresnel(wi, interN, eta_i, eta_t);
+			F = fresnel(wo, interN, eta_i, eta_t);
 			Vector3f transDir = normalized(getRefractionDir(wo, interN, eta_i, eta_t));
 
 			interN = interN.dot(wi) < 0 ? -interN : interN;
@@ -123,7 +161,7 @@ public:
 				return F * 1 / interN.dot(wi);
 			else if(FLOAT_EQUAL(wi.dot(transDir), 1.f)) 
 				// 5/13/2024  this term make some faces bright? idk if it's correct
-				return /*(eta_t * eta_t) / (eta_i * eta_i)* */ (1 - F) * 1 / interN.dot(wi);
+				return /*(eta_t * eta_t) / (eta_i * eta_i) * */(1 - F) * 1 / interN.dot(wi);
 			
 			return Vector3f(0.f);
 			break;			
@@ -136,21 +174,26 @@ public:
 
 
 
-	// sample a direction on the hemisphere
+	// sample a direction on the hemisphere, changes the value of "sampledRes"
 	// wi: incident dir, pointing outward
 	// when passed in, eta_i is always eta_world
-	bool sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes, float eta_i = 0.f) {
+	// returns: first bool for sample success, true for succeed
+	//			second bool for special event happening, 1 for happened
+	std::tuple<bool, bool> sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes, float eta_i = 0.f) {
 		switch (mType)
 		{
 		case MICROFACET_R: {
 			if (wi.dot(N) <= 0.0f) 
-				return false;		// crucial
+				return { false, false };		// crucial
 			
 			// https://zhuanlan.zhihu.com/p/78146875
 			// https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
 			float r0 = getRandomFloat();
 			float r1 = getRandomFloat();
-			float a2 = roughness * roughness * roughness * roughness;
+			float alhpa = roughness * roughness;
+			alpha = std::max(alpha, 1e-3f);
+			float a2 = alhpa * alpha;
+			
 			float phi = 2 * M_PI * r1;
 			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
 
@@ -158,17 +201,54 @@ public:
 			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
 			Vector3f res = getReflectionDir(wi, SphereLocal2world(N, h));
 			res = normalized(res);
-			if (res.dot(N) <= 0)	// very crucial for white noise ??
-				return false;
+			//if (res.dot(N) <= 0)	// actually handled in shadow masking term, but returning false gets faster
+			//	return {false, false};
 
 			sampledRes = res;
-			return true;
+			return { true, false };
+			break;
+		}
+		case MICROFACET_T: {
+			float r0 = getRandomFloat();
+			float r1 = getRandomFloat();
+			float a = roughness * roughness;
+			a = std::max(a, 1e-3f);
+			float a2 = a * a;
+
+			float phi = 2 * M_PI * r1;
+			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
+
+			float r = std::sin(theta);
+			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
+			float eta_t = eta;
+			Vector3f interN = N;
+			if (wi.dot(N) < 0) {
+				std::swap(eta_i, eta_t);
+				interN = -interN;
+			}
+			h = SphereLocal2world(interN, h);
+			
+			Vector3f res = getRefractionDir(wi, h, eta_i, eta_t);
+			// if TIR
+			if (res.norm2() == 0) {
+				return { true, true };	// outside will handle sampleDir
+			}
+
+			float F = fresnel(wi, h, eta_i, eta_t);
+			// choose refl or trans
+			if (getRandomFloat() < F) {	
+				sampledRes = getReflectionDir(wi, h);
+			}
+			else 
+				sampledRes = res;
+
+			return { true, false };
 			break;
 		}
 
 		case LAMBERTIAN: {
 			if (wi.dot(N) <= 0.0f)
-				return false;
+				return {false, false};
 			// cosine weighted
 			// **** inverse transformation sampling
 			// pbrt 13.6.1  *important
@@ -196,16 +276,16 @@ public:
 
 			Vector3f res = SphereLocal2world(N, dir);
 			if (normalized(res).dot(N) < 0)
-				return false;
+				return { false, false };
 
 			sampledRes = res;
-			return true;
+			return { true,false };
 			break;
 		}
 
 		case PERFECT_REFLECTIVE: {
 			sampledRes = getReflectionDir(wi, N);
-			return true;
+			return { true,false };
 			break;
 		}
 		case PERFECT_REFRACTIVE: {
@@ -216,17 +296,23 @@ public:
 				interN = -interN;
 			}
 
+			Vector3f res = getRefractionDir(wi, interN, eta_i, eta_t);
+			// if TIR
+			if (res.norm2() == 0) {
+				return { true, true };	// outside will handle sampleDir
+			}
+
 			float F = fresnel(wi, interN, eta_i, eta_t);
 			if (getRandomFloat() < F) {
 				sampledRes = getReflectionDir(wi, interN);
 			}
-			else sampledRes = getRefractionDir(wi, interN, eta_i, eta_t);
+			else sampledRes = res;
 
-			return true;
+			return { true,false };
 			break;
 		}
 		default: {
-			return false;
+			return { false,false };
 			break;
 		}
 		}
@@ -283,6 +369,36 @@ public:
 			return D_ndf(h, N, roughness) * cosTheta / (4.f * wo.dot(h));
 			break;
 		}
+		case MICROFACET_T: {
+			Vector3f interN = N;
+			if (wo.dot(N) < 0) {
+				interN = -N;
+				std::swap(eta_i, eta_t);
+			}
+			float F = fresnel(wo, interN, eta_i, eta_t);
+
+			// if wi is reflection dir
+			if (wi.dot(interN) >= 0) {
+				Vector3f h = normalized(wo + wi);
+				float cosTheta = interN.dot(h);
+				cosTheta = abs(cosTheta);
+				return F *  D_ndf(h, interN, roughness) * cosTheta / (4.f * wo.dot(h));
+			}
+			// wi is refraction dir
+			else {	// need h and jacobian 
+				Vector3f h = -normalized(eta_i * wo + eta_t * wi);
+				float cosTheta = interN.dot(h);
+				if (cosTheta < 0) {
+					h = -h;
+					cosTheta = abs(cosTheta);
+				}
+				float denominatorSqrt = eta_i * wi.dot(h) + eta_t * wo.dot(h);
+				float jacobian = (eta_t * eta_t * abs(wo.dot(h)))/ (denominatorSqrt * denominatorSqrt);
+				return (1 - F) *  D_ndf(h, interN, roughness) * cosTheta * jacobian;
+			}
+			break;
+		}
+
 		case PERFECT_REFLECTIVE: {
 			if(FLOAT_EQUAL(normalized(wi+wo).dot(N), 1.f))
 				return 1;
@@ -299,7 +415,7 @@ public:
 			}
 			Vector3f transDir = normalized(getRefractionDir(wo, nDir, eta_i, eta_t));
 
-			float F = fresnel(wi, nDir, eta_i, eta_t);
+			float F = fresnel(wo, nDir, eta_i, eta_t);
 
 			// check which direction is sampled 
 			if (FLOAT_EQUAL(wi.dot(refDir), 1.f))
