@@ -343,3 +343,16 @@ float GeometrySmith(Vector3f& N, Vector3f& wi, Vector3f& wo, float k)
 
 	return ggx1 * ggx2;
 }
+
+float getMisWeight(float pdf, float otherPdf) {
+	// balance heuristic
+	//return pdf / (pdf + otherPdf);
+
+	// power heuristic
+	return (pdf * pdf) / ((pdf + otherPdf) * (pdf + otherPdf));
+}
+
+// avoid self colission when testing ray intersection
+void offsetRayOrig(Vector3f& orig, Vector3f interNormal, bool rayIsInside = false) {
+	rayIsInside ? orig -= interNormal * EPSILON : orig += interNormal * EPSILON;
+}
