@@ -201,8 +201,8 @@ public:
 			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
 			Vector3f res = getReflectionDir(wi, SphereLocal2world(N, h));
 			res = normalized(res);
-			//if (res.dot(N) <= 0)	// actually handled in shadow masking term, but returning false gets faster
-			//	return {false, false};
+			if (res.dot(N) <= 0)	// actually handled in shadow masking term, but only for specular term
+				return {false, false};
 
 			sampledRes = res;
 			return { true, false };

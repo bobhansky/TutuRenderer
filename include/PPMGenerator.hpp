@@ -19,17 +19,17 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 128;
+int SPP = 16;
 float SPP_inv = 1.f / SPP;
 //float Russian_Roulette = 0.78f;
 
 #define EXPEDITE 1		// BVH to expedite intersection
 #define MULTITHREAD	1		// multi threads to expedite, comment it out for better ebug
 #define N_THREAD 20
-#define MIS	0			// Multiple Importance Sampling
+#define MIS	1			// Multiple Importance Sampling
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f
-#define MAX_DEPTH 4
+#define MAX_DEPTH 16
 #define MIN_DEPTH 3
 #define MIN_DIVISOR 0.03f
 
@@ -77,6 +77,7 @@ public:
 	Vector3f bkgcolor = Vector3f(FLT_MAX, 0, 0);
 	float eta;							// index of refraction of this scene
 	Scene scene;
+	int integrateType = -1;
 	std::vector<Vector3f> vertices;		// triangle vertex array
 	std::vector<Vector3f> normals;		// vertex normal array
 	std::vector<Vector2f> textCoords;   // texture coordinates array
@@ -317,7 +318,7 @@ public:
 
 			// check if all the required information are set
 			if (!isInitialized()) {
-				throw std::runtime_error("insufficient input data: unable to initialize the program\n");
+				throw std::runtime_error("insufficient input data: unable to start the program\n");
 			}
 			// check if view and up direction are the same
 			if (FLOAT_EQUAL(viewdir.x, updir.x) && FLOAT_EQUAL(viewdir.y, updir.y) && FLOAT_EQUAL(viewdir.z, updir.z)) {
@@ -779,6 +780,17 @@ public:
 			else metallicIndex = size1 - 1;
 			}
 
+		else if (!key.compare("integrator")) {
+			checkFin(); fin >> a;
+			if (!a.compare("path")) {
+				integrateType = 0;
+			}
+			else if (!a.compare("bdpt")) {
+				integrateType = 1;
+			}
+			else throw std::runtime_error("unknown integrator\n");
+		}
+
 		// read object
 		else if (existIn(key, objType)) {
 			readObject(key);
@@ -851,6 +863,7 @@ public:
 		if (hfov == -1) return false;
 		if (FLOAT_EQUAL(updir.x, FLT_MAX)) return false;
 		if (FLOAT_EQUAL(bkgcolor.x, FLT_MAX)) return false;
+		if (integrateType == -1) return false;
 
 		return true;
 	}
