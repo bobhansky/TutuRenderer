@@ -12,6 +12,7 @@ public:
 	int height = 0;
 	std::vector<Vector3f> rgb;
 
+	// by u v
 	Vector3f getRGBat(float u, float v) {
 		if (width == 0 && height == 0) {
 			return Vector3f();
@@ -25,5 +26,21 @@ public:
 		if (index < 0) index = 0;
 		if (index >= rgb.size()) index = rgb.size()-1;
 		return getEleIn(rgb, index);
+	}
+
+	bool setRGB(int x, int y, const Vector3f& RGB) {
+		if (x < 0 || x >= width || y < 0 || y >= height)
+			return false;
+
+		rgb[y + x * width] = RGB;
+		return true;
+	}
+
+	bool setRGB(int index, const Vector3f& RGB) {
+		if (index < 0 || index >= width * height)
+			return false;
+
+		rgb[index] = RGB;
+		return true;
 	}
 };
