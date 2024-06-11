@@ -267,7 +267,7 @@ public:
 			float phi = 2 * M_PI * r2;
 
 			Vector3f dir;
-			float sinTheta = sqrtf(std::max(0.f, 1.f - powf(r1, 2)));
+			float sinTheta = sqrtf(std::max(0.f, 1.f - r1));
 			dir.x = cos(phi) * sinTheta;
 			dir.y = sin(phi) * sinTheta;
 			dir.z = cosTheta;
@@ -320,30 +320,7 @@ public:
 	}
 
 
-	Vector3f SphereLocal2world(const Vector3f& n, const Vector3f& dir) {
-		// https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#generatingrandomdirections/uniformsamplingahemisphere
-		// 8. orthonormal basis
-		// change of basis 
-
-		// x y z local coordinates to s t n coordinates
-		Vector3f a;
-		Vector3f N = normalized(n);	//z
-		// construct an Orthonalmal basis
-		// randomly choose an a that is not parallel to N
-		if (fabs(N.x) > 0.9f)
-			a = { 0.f, 1.f, 0.f };
-		else a = { 1.f, 0.f, 0.f };
-		//Vector3f T = crossProduct(a, N); // y   X cross Y == Z      then S cross T should == N
-		//Vector3f S = crossProduct(T, N); // x
-		// ******** 
-		// 2/21/2024 IMPORTANT
-		// 2 unit vectors cross product doens't guarantee to produce unit vec, unless they are orthogonal
-		// Vector3f S = crossProduct(N, a);		// reason for wrong result
-		Vector3f S = normalized(crossProduct(N, a));
-		Vector3f T = crossProduct(N, S);
-
-		return normalized(dir.x * S + dir.y * T + dir.z * N);
-	}
+	
 
 	// wo: -camera dir   wi: sampled dir
 	// when passed in, eta_i is always eta_world, eta_t is always ior of inter.material

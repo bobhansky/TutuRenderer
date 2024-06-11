@@ -24,6 +24,7 @@
 #include "Texture.hpp"
 #include "IIntegrator.hpp"
 #include "PathTracing.hpp"
+#include "LightTracing.hpp"
 
 
 class Renderer {
@@ -36,9 +37,10 @@ public:
 		else interStrategy = new BaseInterStrategy();
 
 		int inteType = g->integrateType;
-		if(inteType == 0)
+		if (inteType == 0)
 			integrator = new PathTracing(g, interStrategy);
-		//else if( inteType == 1)
+		else if (inteType == 1)
+			integrator = new LightTracing(g, interStrategy);
 
 		records = std::vector<std::string>(N_THREAD, std::string());
 

@@ -12,7 +12,7 @@ std::vector<std::string> records;	// ray information, thread independent string
 
 class IIntegrator {
 public:
-	virtual Vector3f integrate(PPMGenerator* g) = 0;
+	virtual void integrate(PPMGenerator* g) = 0;
 
 protected:
 	IIntersectStrategy* interStrategy;

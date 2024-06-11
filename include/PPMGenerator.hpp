@@ -16,6 +16,7 @@
 #include "Material.hpp"
 #include "Texture.hpp"
 #include "OBJ_Loader.h"
+#include "Camera.hpp"
 
 
 bool PRINT = false;			// debug helper
@@ -37,10 +38,10 @@ float SPP_inv = 1.f / SPP;
 // if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
 // RECORD is only for std::treads multithreading
 #define RECORD 0		
-#define RECORD_MIN_X 576
-#define RECORD_MAX_X 610
-#define RECORD_MIN_Y 679
-#define RECORD_MAX_Y 727
+#define RECORD_MIN_X 282
+#define RECORD_MAX_X 380
+#define RECORD_MIN_Y 257
+#define RECORD_MAX_Y 306
 
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
@@ -60,7 +61,6 @@ public:
 	std::ifstream fin;
 	std::ofstream fout;
 	const char* inputName;	
-	Texture output;						// pixel data, output rgb
 	std::vector<Texture*> diffuseMaps;	// texture data
 	std::vector<Texture*> normalMaps;    // normalMap array
 	std::vector<Texture*> roughnessMaps;		// texture data
@@ -77,6 +77,7 @@ public:
 	Vector3f bkgcolor = Vector3f(FLT_MAX, 0, 0);
 	float eta;							// index of refraction of this scene
 	Scene scene;
+	Camera cam;
 	int integrateType = -1;
 	std::vector<Vector3f> vertices;		// triangle vertex array
 	std::vector<Vector3f> normals;		// vertex normal array
@@ -325,11 +326,15 @@ public:
 				throw std::runtime_error("invalid viewPlane infomation: updir and view dir can't be the same");
 			}
 
-			// initialize the rgb arrays
-			output.rgb.resize(width * height);
-			output.rgb.assign(width * height, Vector3f( bkgcolor.x,  bkgcolor.y,  bkgcolor.z));	//  set to bkgcolor
-			output.width = width;
-			output.height = height;
+			// initialize camera
+
+			cam.width = width;
+			cam.height = height;
+			cam.hfov = hfov;
+			cam.position = eyePos;
+			cam.fwdDir = viewdir;
+			cam.upDir = updir;
+			cam.initialize(bkgcolor);
 		}
 
 		catch (std::runtime_error e) {
@@ -785,8 +790,11 @@ public:
 			if (!a.compare("path")) {
 				integrateType = 0;
 			}
-			else if (!a.compare("bdpt")) {
+			else if (!a.compare("light")) {
 				integrateType = 1;
+			}
+			else if (!a.compare("bdpt")) {
+				integrateType = 2;
 			}
 			else throw std::runtime_error("unknown integrator\n");
 		}
@@ -825,7 +833,7 @@ public:
 			for (int j = 0; j < width; j++) {
 				size_t index = getIndex(j, i);
 				
-				Vector3f color = output.rgb[index];
+				Vector3f &color = cam.FrameBuffer.rgb[index];
 #ifdef GAMMA_COORECTION
 				// gamma correction
 				color.x = 255 * pow(clamp(0, 1, color.x), GAMMA_VAL);

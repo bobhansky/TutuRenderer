@@ -154,7 +154,7 @@ public:
 		if (!inter.intersected)		return g->bkgcolor;
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
-		if (inter.mtlcolor.hasEmission())  return inter.mtlcolor.emission;
+		if (inter.mtlcolor.hasEmission() && inter.nDir.dot(-dir) > 0)  return inter.mtlcolor.emission;
 
 		Vector3f wo = -dir;
 
@@ -351,14 +351,15 @@ public:
 	}
 
 
-	virtual Vector3f integrate(PPMGenerator* g) {
+	virtual void integrate(PPMGenerator* g) {
 		// we shoot a ray from eyePos, trough each pixel, 
 		// to the scene. update the rgb info if we hit objects
 		// v: vertical unit vector of the view plane
 		// u: horizontal unit vector of the view plane
-		Vector3f u = crossProduct(g->viewdir, g->updir);
+		Camera& cam = g->cam;
+		Vector3f u = crossProduct(cam.fwdDir, cam.upDir);
 		u = normalized(u);
-		Vector3f v = crossProduct(u, g->viewdir);
+		Vector3f v = crossProduct(u, cam.fwdDir);
 		v = normalized(v);
 
 		// calculate the near plane parameters
@@ -371,15 +372,15 @@ public:
 		// tan(hfov/2) =  nearplane.width/2 : d
 		// h/2 = tan(hfov/2) * d 
 		// here height_half and width_half are the h and w of the nearplane in the world space
-		float width_half = fabs(tan(degree2Radians(g->hfov / 2.f)) * d);
-		float aspect_ratio = g->width / (float)g->height;
+		float width_half = fabs(tan(degree2Radians(cam.hfov / 2.f)) * d);
+		float aspect_ratio = cam.width / (float)cam.height;
 		float height_half = width_half / aspect_ratio;
 
 
 		// we sample the center of the pixel 
 		// so we need to add offset to the center later
 		Vector3f n = normalized(g->viewdir);
-		Vector3f eyePos = g->eyePos;
+		Vector3f eyePos = cam.position;
 		Vector3f ul = eyePos + d * n - width_half * u + height_half * v;
 		Vector3f ur = eyePos + d * n + width_half * u + height_half * v;
 		Vector3f ll = eyePos + d * n - width_half * u - height_half * v;
@@ -446,7 +447,7 @@ public:
 					PRINT = true;
 				}
 
-				Vector3f& color = g->output.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
+				Vector3f& color = g->cam.FrameBuffer.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
 				Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
 				Vector3f rayDir;
@@ -499,7 +500,7 @@ void sub_render(Thread_arg* a, int threadID, int s, int e) {
 	const Vector3f c_off_v = *arg.c_off_v;
 	PPMGenerator* g = arg.g;
 	PathTracing* pt = arg.pt;
-	std::vector<Vector3f>* rgb_array = &(g->output.rgb);
+	std::vector<Vector3f>* rgb_array = &(g->cam.FrameBuffer.rgb);
 	const Vector3f eyePos = *arg.eyePos;
 	int Ncol = g->width;
 
@@ -534,7 +535,7 @@ void sub_render_record(Thread_arg* a, int threadID, int s, int e) {
 	const Vector3f c_off_v = *arg.c_off_v;
 	PPMGenerator* g = arg.g;
 	PathTracing* pt = arg.pt;
-	std::vector<Vector3f>* rgb_array = &(g->output.rgb);
+	std::vector<Vector3f>* rgb_array = &(g->cam.FrameBuffer.rgb);
 	const Vector3f eyePos = *arg.eyePos;
 	int Ncol = g->width;
 
