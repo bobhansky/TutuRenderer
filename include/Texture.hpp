@@ -43,4 +43,12 @@ public:
 		rgb[index] = RGB;
 		return true;
 	}
+
+	bool addRGB(int index, const Vector3f& RGB) {
+		if (index < 0 || index >= width * height)
+			return false;
+
+		rgb[index] += RGB;
+		return true;
+	}
 };

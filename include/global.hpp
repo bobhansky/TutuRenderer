@@ -107,7 +107,7 @@ void checkFloat(std::string& str) {
 }
 
 // convert degree to radians
-float degree2Radians(const float& d) {
+inline float degree2Radians(const float& d) {
 	return d * M_PI / 180.f;
 }
 
