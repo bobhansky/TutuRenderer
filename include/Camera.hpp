@@ -38,6 +38,13 @@ public:
 		world2ndc = perspective * world2Cam;
 		world2Raster = Mat4f::getTranslate(Vector3f(1.f, 1.f, 0)) * world2ndc;
 		world2Raster = Mat4f::getScale(Vector3f(width * 0.5f, height * 0.5f, 0)) * world2Raster;
+
+		// an img plane dist which makes each pixel area exactly 1
+		float tanHalfHfov = tan(degree2Radians(hfov * 0.5f));
+		imagePlaneDist = width / (2.f * tanHalfHfov);
+
+		filmPlaneAreaInv = 1.f / (width * height);
+		lensAreaInv = 1.f;
 	}
 
 	// return -1 if can't
@@ -76,9 +83,13 @@ public:
 	Vector3f rightDir;
 	Vector3f position;
 	Texture FrameBuffer;
+
 	int width;
 	int height;
 	int hfov;
+	float imagePlaneDist;
+	float filmPlaneAreaInv;
+	float lensAreaInv;
 
 	Mat4f world2Cam;
 	Mat4f perspective;

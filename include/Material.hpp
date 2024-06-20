@@ -161,7 +161,7 @@ public:
 				return F * 1 / interN.dot(wi);
 			else if(FLOAT_EQUAL(wi.dot(transDir), 1.f)) 
 				// 5/13/2024  this term make some faces bright? idk if it's correct
-				return /*(eta_t * eta_t) / (eta_i * eta_i) * */(1 - F) * 1 / interN.dot(wi);
+				return (eta_t * eta_t) / (eta_i * eta_i) * (1 - F) * 1 / interN.dot(wi);
 			
 			return Vector3f(0.f);
 			break;			
@@ -179,7 +179,7 @@ public:
 	// when passed in, eta_i is always eta_world
 	// returns: first bool for sample success, true for succeed
 	//			second bool for special event happening, 1 for happened
-	std::tuple<bool, bool> sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes, float eta_i = 0.f) {
+	std::tuple<bool, bool> sampleDirection(const Vector3f& wi, const Vector3f& N, Vector3f& sampledRes, float eta_i = 1.f) {
 		switch (mType)
 		{
 		case MICROFACET_R: {
@@ -324,7 +324,7 @@ public:
 
 	// wo: -camera dir   wi: sampled dir
 	// when passed in, eta_i is always eta_world, eta_t is always ior of inter.material
-	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float eta_i = 0.f, float eta_t = 0.f) const {
+	float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float eta_i = 1.f, float eta_t = 1.f) const {
 		switch (mType)
 		{
 		case LAMBERTIAN: {
