@@ -4,6 +4,7 @@ A CPU based Path Tracer for personal interest and education.
 ## Features
 - Integrator
    - Path Tracing
+   - Light Tracing
 - Matertial:
    - Lambertain Diffuse (cos weighted)
    - Microfacet Reflection and Transmittance (Cook Torrance Model with GGX distribution).
