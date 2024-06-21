@@ -20,7 +20,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 64;
 float SPP_inv = 1.f / SPP;
 //float Russian_Roulette = 0.78f;
 
@@ -793,7 +793,7 @@ public:
 			else if (!a.compare("light")) {
 				integrateType = 1;
 			}
-			else if (!a.compare("bdpt")) {
+			else if (!a.compare("naivept")) {
 				integrateType = 2;
 			}
 			else throw std::runtime_error("unknown integrator\n");

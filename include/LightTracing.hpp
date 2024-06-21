@@ -3,7 +3,7 @@
 #include "IIntegrator.hpp"
 
 #define CHECK 0		// checking world to raster
-#define MAXDEPTH 5
+#define MAXDEPTH 6
 #define SAMPLE 1
 
 struct lightPathVert {
@@ -73,7 +73,6 @@ public:
 		float cos = p12p2.dot(n1);
 		float cosprime = (-p12p2).dot(n2);
 		return cos * cosprime / dis2;
-		
 	}
 
 	bool sampleLightDir(Vector3f& N, float& dirPdf, Vector3f& sampledRes) {
@@ -240,16 +239,19 @@ public:
 				lightPathVert lv;
 				lv.throughput = tp;
 				lv.inter = nxtInter;
+				// TEXTURE
+				if (lv.inter.obj->isTextureActivated)
+					textureModify(lv.inter, g);
 
 				lpverts.emplace_back(lv);
 				// sample next inter
 				Vector3f wo = -wi;
 				auto [success, TIR] = lv.inter.mtlcolor.sampleDirection(wo, lv.inter.nDir, wi, g->eta);
-				if (!success) continue;
+				if (!success) break;
 
 				wi = normalized(wi);
 				dirPdf = lv.inter.mtlcolor.pdf(wi, wo, lv.inter.nDir, g->eta, lv.inter.mtlcolor.eta);
-				if (dirPdf == 0) continue;
+				if (dirPdf == 0) break;;
 				if (TIR) {
 					wi = normalized(getReflectionDir(wo, lv.inter.nDir));
 					dirPdf = 1;
@@ -258,6 +260,8 @@ public:
 				float cos = abs(wi.dot(lv.inter.nDir));
 				// for next vertex
 				Vector3f bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta, TIR);
+				if (dirPdf < MIN_DIVISOR)
+					break;
 				tp = tp * bsdf * cos / dirPdf;
 
 				// find next inter
@@ -265,6 +269,8 @@ public:
 				bool rayInside = lv.inter.nDir.dot(wi) < 0;
 				offsetRayOrig(orig, lv.inter.nDir, rayInside);
 				interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
+				if (!nxtInter.intersected)
+					break;
 			}
 			
 			// evaluate path contribution Contribution(s, t = 1)
@@ -277,7 +283,7 @@ public:
 				Vector3f wo = normalized(cam.position - lpverts[s].inter.pos);
 				Vector3f bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, 1.f);
 				Vector3f we = We(lv.inter, cam);
-				Vector3f res = l * bsdf * lv.throughput * G * we;
+				Vector3f res = pdfCam * l * bsdf * lv.throughput * G * we;
 
 				// connect to camera
 				Vector3f orig = lv.inter.pos;
