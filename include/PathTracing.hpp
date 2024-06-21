@@ -147,20 +147,21 @@ public:
 		if (nxtInter)	inter = *nxtInter;
 		else interStrategy->UpdateInter(inter, this->g->scene, origin, dir);
 
+		// if ray has no intersection, return bkgcolor
+		if (!inter.intersected)		return g->bkgcolor;
+
+		// TEXTURE
+		if (inter.obj->isTextureActivated)
+			textureModify(inter, g);
+
 		// if UNLIT material, return diffuse
 		if (inter.mtlcolor.mType == UNLIT) return inter.mtlcolor.diffuse;
 
-		// if ray has no intersection, return bkgcolor
-		if (!inter.intersected)		return g->bkgcolor;
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
 		if (inter.mtlcolor.hasEmission() && inter.nDir.dot(-dir) > 0)  return inter.mtlcolor.emission;
 
 		Vector3f wo = -dir;
-
-		// TEXTURE
-		if (inter.obj->isTextureActivated)
-			textureModify(inter, g);
 
 		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE
 			|| inter.mtlcolor.mType == MICROFACET_T)
@@ -443,7 +444,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 695 && y == 658) {
+				if (x == 1345 && y == 60) {
 					PRINT = true;
 				}
 

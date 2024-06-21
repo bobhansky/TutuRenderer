@@ -133,7 +133,7 @@ bool isShadowRayBlocked(Vector3f orig, Vector3f& lightPos, PPMGenerator* g) {
 	if (!EXPEDITE) {
 		Intersection p_light_inter;
 		for (auto& i : g->scene.objList) {
-			if (i->mtlcolor.hasEmission()) continue; // do not test with light avatar
+			//if (i->mtlcolor.hasEmission()) continue; // do not test with light avatar
 
 			if (i->intersect(orig, raydir, p_light_inter) && p_light_inter.t < distance) {
 				return true;

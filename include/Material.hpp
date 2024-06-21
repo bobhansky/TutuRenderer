@@ -161,7 +161,7 @@ public:
 				return F * 1 / interN.dot(wi);
 			else if(FLOAT_EQUAL(wi.dot(transDir), 1.f)) 
 				// 5/13/2024  this term make some faces bright? idk if it's correct
-				return (eta_t * eta_t) / (eta_i * eta_i) * (1 - F) * 1 / interN.dot(wi);
+				return /*(eta_t * eta_t) / (eta_i * eta_i) * */(1 - F) * 1 / interN.dot(wi);
 			
 			return Vector3f(0.f);
 			break;			
