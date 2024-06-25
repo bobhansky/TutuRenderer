@@ -1,47 +1,21 @@
 #pragma once
-// Integrator: bdpt
+// Integrator: naivept
 #include "IIntegrator.hpp"
 
 #define MAXDEPTH 6
 
-struct eyePathVert {
-	Vector3f throughput;
-	Intersection inter;
-};
-
-// 6/21/2024   now test a pathtracing 
+// when evaluating pixel value, "way n" parts need to correspond to each others
 class NaivePT : public IIntegrator {
 public:
+
+	struct eyePathVert {
+		Vector3f throughput;
+		Intersection inter;
+	};
+
 	NaivePT(PPMGenerator* g, IIntersectStrategy* inters) {
 		this->g = g;
 		this->interStrategy = inters;
-	}
-
-	// geometry term
-	float Geo(Vector3f& p1, const Vector3f& n1, Vector3f& p2, const Vector3f& n2) {
-		Vector3f p12p2 = p2 - p1;
-		float dis2 = p12p2.norm2();
-		p12p2 = normalized(p12p2);
-		float cos = p12p2.dot(n1);
-		float cosprime = (-p12p2).dot(n2);
-		return cos * cosprime / dis2;
-	}
-
-	float We(Intersection& inter, Camera& cam) {
-		Vector3f camPos = cam.position;
-		Vector3f inter2cam = camPos - inter.pos;
-		inter2cam = normalized(inter2cam);
-
-		// check if inter is in the frustum
-		int index = cam.worldPos2PixelIndex(inter.pos);
-		if (index < 0 || index >= cam.width * cam.height) {
-			return 0.f;
-		}
-
-		float cosCamera = cam.fwdDir.dot(-inter2cam);
-		float distPixel2Cam = cam.imagePlaneDist / cosCamera;
-
-		return distPixel2Cam * distPixel2Cam * cam.lensAreaInv  * cam.filmPlaneAreaInv  / (cosCamera * cosCamera);
 	}
 
 	// path tracing only consider the Contribution(s = 0, t = n) situation:
@@ -88,15 +62,12 @@ public:
 				Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
 				Vector3f rayDir;
 				Vector3f eyeLocation;
-				// calculate the rayDir and eyeLocation base on different projection method
+
 				rayDir = normalized(pixelPos - eyePos);
 				eyeLocation = eyePos;
 
-				// trace ray into each pixel
 				Vector3f estimate;
 				for (int i = 0; i < SPP; i++) {
-					//estimate = estimate + traceRay(eyePos, rayDir, 0, Vector3f(1), nullptr, -1, RECORD);
-					// all light path vertices
 					std::vector<eyePathVert> epverts;
 					float pdfCam = 1.f;
 					Vector3f wi = rayDir;
@@ -114,8 +85,20 @@ public:
 					Vector3f orig = eyePos;
 
 					// for next vertex
-					float wi_n_cos = abs(wi.dot(epverts[0].inter.nDir));
-					tp = epverts[0].throughput * wi_n_cos / 1;
+					// way 1: stick to original mesurement function
+					// tp = 1;	
+
+					// ***** way 2: 
+					// 6/22/2024:
+					// the pdf of first point w.r.t area == choose the pixel, the pdf_A = 1/FilmArea,
+					// pdf_w = 1/FilmArea/lensArea * d^2/ camCos
+					// == d^2 / (FilmArea * lensArea* camCos)
+					float wi_n_cos = abs(wi.dot(epverts[0].inter.nDir)); // camCos
+					float d2 = (pixelPos - cam.position).norm2();
+					float pdfCam_w = d2 * cam.lensAreaInv * cam.filmPlaneAreaInv / wi_n_cos;
+					// projected solid angle pdf
+					tp = epverts[0].throughput * wi_n_cos / pdfCam_w;
+					// ***** way 2 ends
 
 					Intersection nxtInter;
 					interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
@@ -124,61 +107,47 @@ public:
 
 					// random walk to build light path
 					for (int t = 1; t < MAXDEPTH; ++t) {
-						eyePathVert lv;
-						lv.throughput = tp;
-						lv.inter = nxtInter;
+						eyePathVert ev;
+						ev.throughput = tp;
+						ev.inter = nxtInter;
 						// TEXTURE
-						if (lv.inter.obj->isTextureActivated) textureModify(lv.inter, g);
+						if (ev.inter.obj->isTextureActivated) textureModify(ev.inter, g);
 
-						//  t = 0
-						epverts.emplace_back(lv);
-						if (lv.inter.mtlcolor.hasEmission())
+						//  t = 1
+						epverts.emplace_back(ev);
+						if (ev.inter.mtlcolor.hasEmission())
 							break;
 						// sample next inter
 						Vector3f wo = -wi;
-						auto [success, TIR] = lv.inter.mtlcolor.sampleDirection(wo, lv.inter.nDir, wi, g->eta);
+						auto [success, TIR] = ev.inter.mtlcolor.sampleDirection(wo, ev.inter.nDir, wi, g->eta);
 						if (!success) break;
 
 						wi = normalized(wi);
-						dirPdf = lv.inter.mtlcolor.pdf(wi, wo, lv.inter.nDir, g->eta, lv.inter.mtlcolor.eta);
+						dirPdf = ev.inter.mtlcolor.pdf(wi, wo, ev.inter.nDir, g->eta, ev.inter.mtlcolor.eta);
 						if (dirPdf == 0) break;;
 						if (TIR) {
-							wi = normalized(getReflectionDir(wo, lv.inter.nDir));
+							wi = normalized(getReflectionDir(wo, ev.inter.nDir));
 							dirPdf = 1;
-
 						}
-						float cos = abs(wi.dot(lv.inter.nDir));
+						float cos = abs(wi.dot(ev.inter.nDir));
 						// for next vertex
-						Vector3f bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta, TIR);
+						Vector3f bsdf = ev.inter.mtlcolor.BxDF(wi, wo, ev.inter.nDir, g->eta, TIR);
 						if (dirPdf < MIN_DIVISOR)
 							break;
 						tp = tp * bsdf * cos / dirPdf;
 
 						// find next inter
-						orig = lv.inter.pos;
-						bool rayInside = lv.inter.nDir.dot(wi) < 0;
-						offsetRayOrig(orig, lv.inter.nDir, rayInside);
+						orig = ev.inter.pos;
+						bool rayInside = ev.inter.nDir.dot(wi) < 0;
+						offsetRayOrig(orig, ev.inter.nDir, rayInside);
 						interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
 						if (!nxtInter.intersected)
 							break;
 					}
 					// evaluate path contribution Contribution(s, t = 1)
-					// vertices can't form a path
 					int size = epverts.size();
-					if (size < 2)
-						continue;
 
 					eyePathVert ev = epverts[size - 1];
-					// only consider the case camera ray hits light:
-					// s = 0, t = n
-					if (!ev.inter.mtlcolor.hasEmission())
-						continue;
-					if (size == 2) {
-						// only consider emmisive obj when there are only 2 vertices
-						if (ev.inter.mtlcolor.hasEmission())
-							estimate += ev.inter.mtlcolor.emission * We(ev.inter, cam);
-						continue;
-					}
 
 					// evaluate pixel contribution
 					// https://agraphicsguynotes.com/posts/the_missing_primary_ray_pdf_in_path_tracing/
@@ -189,14 +158,12 @@ public:
 					Vector3f we = We(pixelInter, cam);
 					// pixel area == 1, pdf point = 1/1
 					float p = cam.lensAreaInv  * cam.filmPlaneAreaInv * 1;
-					// can just let res = l * tp,
-					// G, We, 1/p cancel each others.
-					Vector3f res = (1/p) * l * ev.throughput * G * we;
+					// can just let res = l * tp: G, We, 1/p cancel each others.
+					// Vector3f res = (1/p) * l * ev.throughput * G * we;	// way 1, original mesureament function
+					Vector3f res = l * ev.throughput * we; // way 2, no connection vertices, no G term
 					estimate += res;
 				}
 				estimate = estimate * SPP_inv;
-
-				PRINT = false;
 				color = estimate;
 			}
 		}

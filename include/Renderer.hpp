@@ -26,6 +26,7 @@
 #include "PathTracing.hpp"
 #include "LightTracing.hpp"
 #include "NaivePT.hpp"
+#include "BDPT.hpp"
 
 
 class Renderer {
@@ -42,8 +43,10 @@ public:
 			integrator = new PathTracing(g, interStrategy);
 		else if (inteType == 1)
 			integrator = new LightTracing(g, interStrategy);
-		else if(inteType == 2)
+		else if (inteType == 2)
 			integrator = new NaivePT(g, interStrategy);
+		else if (inteType == 3)
+			integrator = new BDPT(g, interStrategy);
 
 		records = std::vector<std::string>(N_THREAD, std::string());
 
