@@ -64,7 +64,7 @@ public:
 		case LAMBERTIAN: {
 			float cos_theta = wo.dot(N);
 			// account for reflection contribution only
-			if (cos_theta > 0.f) {
+			if (cos_theta >= 0.f) {
 				return diffuse / M_PI;
 			}
 			else return Vector3f(0.f);

@@ -125,7 +125,7 @@ void textureModify(Intersection& inter, PPMGenerator* g) {
 /// </summary>
 /// <param name="p">inter information</param>
 /// <param name="lightPos">light position</param>
-/// <returns>if the ray is blocked by non-emissive obj, return true</returns>
+/// <returns>if the ray is blocked obj, return true</returns>
 bool isShadowRayBlocked(Vector3f orig, Vector3f& lightPos, PPMGenerator* g) {
 	Vector3f raydir = normalized(lightPos - orig);
 	float distance = (lightPos - orig).norm();
@@ -229,4 +229,60 @@ void sampleLight(Intersection& inter, float& pdf, PPMGenerator* g) {
 	lightObject->samplePoint(inter, pdf);
 	// independent event p(a&&b) == p(a) *  p(b)
 	pdf = (1.f / (size * lightObject->getArea()));
+}
+
+
+bool sampleLightDir(Vector3f& N, float& dirPdf, Vector3f& sampledRes) {
+	// cos-weighted
+	float r1 = getRandomFloat();
+	float r2 = getRandomFloat();
+	float cosTheta = sqrt(r1);
+	float phi = 2 * M_PI * r2;
+
+	Vector3f dir;
+	float sinTheta = sqrt(std::max(0.f, 1 - r1));
+	dir.x = cos(phi) * sinTheta;
+	dir.y = sin(phi) * sinTheta;
+	dir.z = cosTheta;
+
+	dir = normalized(dir);
+
+	Vector3f res = SphereLocal2world(N, dir);
+	if (normalized(res).dot(N) < 0)
+		return false;
+
+	dirPdf = 0.f;
+	if (res.dot(N) > 0.0f)
+		dirPdf = res.dot(N) / M_PI;
+
+	sampledRes = res;
+	return true;
+}
+
+// geometry term
+float Geo(Vector3f& p1, const Vector3f& n1, Vector3f& p2, const Vector3f& n2) {
+	Vector3f p12p2 = p2 - p1;
+	float dis2 = p12p2.norm2();
+	p12p2 = normalized(p12p2);
+	float cos = p12p2.dot(n1);
+	float cosprime = (-p12p2).dot(n2);
+	return cos * cosprime / dis2;
+}
+
+// importance function
+float We(Intersection& inter, Camera& cam) {
+	Vector3f camPos = cam.position;
+	Vector3f inter2cam = camPos - inter.pos;
+	inter2cam = normalized(inter2cam);
+
+	// check if inter is in the frustum
+	int index = cam.worldPos2PixelIndex(inter.pos);
+	if (index < 0 || index >= cam.width * cam.height) {
+		return 0.f;
+	}
+
+	float cosCamera = cam.fwdDir.dot(-inter2cam);
+	float distPixel2Cam = cam.imagePlaneDist / cosCamera;
+
+	return distPixel2Cam * distPixel2Cam * cam.lensAreaInv * cam.filmPlaneAreaInv / (cosCamera * cosCamera);
 }
