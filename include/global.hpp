@@ -10,9 +10,9 @@
 
 #include "Vector.hpp"
 
-
+#define DEBUG 1
 #define M_PI 3.1415926535897f
-#define EPSILON 0.05f		// be picky about it, change it to accommodate object size
+#define EPSILON 0.0005f		// be picky about it, change it to accommodate object size
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);
 // x is the portion
@@ -167,7 +167,11 @@ float getRandomFloat() {
 	// an uniformly - distributed random number generator, use it to seed a pseudo-random generator
 	static std::random_device dev;
 	// a fast pseudo-random number generator, use this to seed a particular distribution
-	static std::mt19937 rng(dev());		
+#if DEBUG
+	static std::mt19937 rng(1);			// use when debug
+#else
+	static std::mt19937 rng(dev());	// use when release
+#endif
 	static std::uniform_real_distribution<float> dist(0,1); // distribution in range [0.0, 1.0)
 
 	return dist(rng);	

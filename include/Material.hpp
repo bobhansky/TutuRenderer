@@ -84,7 +84,9 @@ public:
 			float D = D_ndf(h, N, roughness);
 			//float G = GeometrySmith(N, wi, wo, (roughness + 1) * (roughness + 1) / 8);	// learnopgl
 			float G = G_smf(wi, wo, N, roughness, h);
-			Vector3f fr = (F * G * D) / (4 * wi.dot(N) * wo.dot(N));	// originaly float fr
+			float denom = 4 * wi.dot(N) * wo.dot(N);
+			if (denom == 0) return 0;
+			Vector3f fr = (F * G * D) / denom;	// originaly float fr
 
 			//fr = clamp(0, 1, fr);
 			Vector3f diffuse_term = (1.f - F) * (diffuse / M_PI);
@@ -112,7 +114,9 @@ public:
 					F = 1.f;
 				float D = D_ndf(h, interN, roughness);
 				float G = G_smf(wi, wo, interN, roughness, h);
-				Vector3f fr = (F * G * D) / (4 * wi.dot(interN) * wo.dot(interN));	// originaly float fr
+				float denom = 4 * wi.dot(interN) * wo.dot(interN);
+				if (denom == 0) return 0;
+				Vector3f fr = (F * G * D) / denom;	// originaly float fr
 				return fr;
 			}
 			// wi is refraction dir
@@ -126,6 +130,7 @@ public:
 				float G = G_smf(wi, wo, interN, roughness, h);
 				float numerator = abs(cos_ih) * abs(cos_oh) * eta_t * eta_t * (1 - F) * G * D;
 				float denominator = abs(cos_in) * abs(cos_on) * std::powf(eta_i * cos_ih + eta_t * cos_oh, 2);
+				if (denominator == 0) return 0;
 				return numerator / denominator;
 			}
 		}
@@ -359,7 +364,9 @@ public:
 				Vector3f h = normalized(wo + wi);
 				float cosTheta = interN.dot(h);
 				cosTheta = abs(cosTheta);
-				return F *  D_ndf(h, interN, roughness) * cosTheta / (4.f * wo.dot(h));
+				float deno = 4.f * wo.dot(h);
+				if (deno == 0) return 0;
+				return F *  D_ndf(h, interN, roughness) * cosTheta / deno;
 			}
 			// wi is refraction dir
 			else {	// need h and jacobian 
@@ -371,6 +378,7 @@ public:
 				}
 				float denominatorSqrt = eta_i * wi.dot(h) + eta_t * wo.dot(h);
 				float jacobian = (eta_t * eta_t * abs(wo.dot(h)))/ (denominatorSqrt * denominatorSqrt);
+				if (denominatorSqrt == 0) return 0;
 				return (1 - F) *  D_ndf(h, interN, roughness) * cosTheta * jacobian;
 			}
 			break;

@@ -1,24 +1,27 @@
 #pragma once
 
 #include<mutex>
+#include<omp.h>
 
 #include "Vector.hpp"
 #include "global.hpp"
 #include "PPMGenerator.hpp"
 #include "IIntersectStrategy.h"
 
+
+
 std::mutex sampleLight_mutex;
+omp_lock_t light_lock_omp;
 std::vector<std::string> records;	// ray information, thread independent string
 
 class IIntegrator {
 public:
 	virtual void integrate(PPMGenerator* g) = 0;
 
-protected:
+public:
 	IIntersectStrategy* interStrategy;
 	PPMGenerator* g;
 };
-
 
 
 void changeNormalDir(Intersection& inter, PPMGenerator* g) {
@@ -158,7 +161,11 @@ float getLightPdf(Intersection& inter, PPMGenerator* g) {
 
 	if (firstimeCall) {
 		// 3/2/2024: need lock
+#if MULTITHREAD==1
 		sampleLight_mutex.lock();
+#elif MULTITHREAD == 2
+		omp_set_lock(&light_lock_omp);
+#endif
 		for (auto& i : g->scene.objList) {
 			if (!firstimeCall)
 				break;
@@ -170,7 +177,11 @@ float getLightPdf(Intersection& inter, PPMGenerator* g) {
 			}
 		}
 		firstimeCall = false;
+#if MULTITHREAD==1
 		sampleLight_mutex.unlock();
+#elif  MULTITHREAD == 2
+		omp_unset_lock(&light_lock_omp);
+#endif;
 	}
 
 	size = lightList.size();
@@ -198,7 +209,11 @@ void sampleLight(Intersection& inter, float& pdf, PPMGenerator* g) {
 
 	if (firstimeCall) {
 		// 3/2/2024: need lock
+#if MULTITHREAD == 1
 		sampleLight_mutex.lock();
+#elif MULTITHREAD == 2
+		omp_set_lock(&light_lock_omp);
+#endif
 		for (auto& i : g->scene.objList) {
 			if (!firstimeCall)
 				break;
@@ -209,7 +224,11 @@ void sampleLight(Intersection& inter, float& pdf, PPMGenerator* g) {
 			}
 		}
 		firstimeCall = false;
+#if MULTITHREAD == 1
 		sampleLight_mutex.unlock();
+#elif MULTITHREAD == 2
+		omp_unset_lock(&light_lock_omp);
+#endif
 	}
 
 	size = lightList.size();
@@ -264,8 +283,8 @@ float Geo(Vector3f& p1, const Vector3f& n1, Vector3f& p2, const Vector3f& n2) {
 	Vector3f p12p2 = p2 - p1;
 	float dis2 = p12p2.norm2();
 	p12p2 = normalized(p12p2);
-	float cos = p12p2.dot(n1);
-	float cosprime = (-p12p2).dot(n2);
+	float cos =abs(p12p2.dot(n1));
+	float cosprime = abs((-p12p2).dot(n2));
 	return cos * cosprime / dis2;
 }
 
@@ -281,7 +300,7 @@ float We(Intersection& inter, Camera& cam) {
 		return 0.f;
 	}
 
-	float cosCamera = cam.fwdDir.dot(-inter2cam);
+	float cosCamera = abs(cam.fwdDir.dot(-inter2cam));
 	float distPixel2Cam = cam.imagePlaneDist / cosCamera;
 
 	return distPixel2Cam * distPixel2Cam * cam.lensAreaInv * cam.filmPlaneAreaInv / (cosCamera * cosCamera);

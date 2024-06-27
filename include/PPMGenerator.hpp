@@ -20,18 +20,13 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
-//float Russian_Roulette = 0.78f;
 
 #define EXPEDITE 1		// BVH to expedite intersection
-#define MULTITHREAD	1		// multi threads to expedite, comment it out for better ebug
+#define MULTITHREAD	0		// multi threads to expedite, 0 for none, 1 for std::thread, 2 for openmp
 #define N_THREAD 20
 #define MIS	1			// Multiple Importance Sampling
-#define GAMMA_COORECTION 
-#define GAMMA_VAL 0.78f
-#define MAX_DEPTH 16
-#define MIN_DEPTH 3
 #define MIN_DIVISOR 0.03f
 
 // these are used for debugging: saving ray info to disk
@@ -43,6 +38,8 @@ float SPP_inv = 1.f / SPP;
 #define RECORD_MIN_Y 257
 #define RECORD_MAX_Y 306
 
+#define GAMMA_COORECTION 
+#define GAMMA_VAL 0.78f
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
 //#define BLOOM_ONLY

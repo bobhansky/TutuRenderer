@@ -2,12 +2,15 @@
 // Integrator: path
 #include "IIntegrator.hpp"
 
+#define MAX_DEPTH 5
+#define MIN_DEPTH 3
+
 class PathTracing;
 // thread argument
 // 12/23/2023: unknown reason, if I put start and end inside this arg struct
 // instead of passing them as thread function parameters like Im doing now
 // some of upper img is not rendered  
-struct Thread_arg {
+struct Thread_arg_pt {
 	// ul, delta_v  delta_h  g->rgb  eyePos
 	const Vector3f* ul;
 	const Vector3f* delta_v;
@@ -19,7 +22,7 @@ struct Thread_arg {
 	PathTracing* pt;
 };
 
-void sub_render(Thread_arg* a, int threadID, int s, int e);
+void sub_render_pt(Thread_arg_pt* a, int threadID, int s, int e);
 
 // for recording
 #if RECORD
@@ -180,8 +183,10 @@ public:
 
 		bool rayInside = inter.nDir.dot(wo) < 0;
 		Vector3f shadowRayOrig = inter.pos;
+		Vector3f lightPos = light_inter.pos;
 		offsetRayOrig(shadowRayOrig, inter.nDir, rayInside);
-		if (!light_inter.intersected || isShadowRayBlocked(shadowRayOrig, light_inter.pos, g)) {}
+		offsetRayOrig(lightPos, light_inter.nDir, false);
+		if (!light_inter.intersected || isShadowRayBlocked(shadowRayOrig, lightPos, g)) {}
 		else {
 			Vector3f wi = light_inter.pos - inter.pos;
 			float r2 = wi.norm2();
@@ -365,7 +370,7 @@ public:
 
 		// calculate the near plane parameters
 		// we set the distance from eye to near plane to 1, namely the nearplane.z = eyePos.z - 1;
-		float d = 1.f;
+		float d = cam.imagePlaneDist;
 		// distance from eye to nearplane MATTERS when we are doing orthographic ray
 		// cuz we need a bigger viewplane   I set it to 4 in respond to my scene set
 		if (g->parallel_projection) d = 4.f;
@@ -377,7 +382,6 @@ public:
 		float aspect_ratio = cam.width / (float)cam.height;
 		float height_half = width_half / aspect_ratio;
 
-
 		// we sample the center of the pixel 
 		// so we need to add offset to the center later
 		Vector3f n = normalized(g->viewdir);
@@ -387,7 +391,6 @@ public:
 		Vector3f ll = eyePos + d * n - width_half * u - height_half * v;
 		Vector3f lr = eyePos + d * n + width_half * u - height_half * v;
 
-
 		Vector3f delta_h = Vector3f(0, 0, 0);	// delta horizontal
 		if (g->width != 1) delta_h = (ur - ul) / (g->width - 1);
 		Vector3f delta_v = Vector3f(0, 0, 0);	// delta vertical
@@ -395,12 +398,12 @@ public:
 		Vector3f c_off_h = (ur - ul) / (float)(g->width * 2);	// center horizontal offset
 		Vector3f c_off_v = (ll - ul) / (float)(g->height * 2); // vertical
 
-#if MULTITHREAD
+#if MULTITHREAD == 1
 		int rowPerthd = g->height / N_THREAD;
 		std::thread thds[N_THREAD];
 
 		for (int i = 0; i < N_THREAD - 1; i++) {
-			Thread_arg arg{
+			Thread_arg_pt arg{
 				&ul,
 				&delta_v,
 				&delta_h,
@@ -413,11 +416,11 @@ public:
 #if RECORD
 			thds[i] = std::thread(&sub_render_record, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
 #else
-			thds[i] = std::thread(sub_render, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
+			thds[i] = std::thread(sub_render_pt, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
 #endif
 		}
 		// last thread
-		Thread_arg arg_end{
+		Thread_arg_pt arg_end{
 				&ul,
 				&delta_v,
 				&delta_h,
@@ -430,7 +433,7 @@ public:
 #if RECORD
 		thds[N_THREAD - 1] = std::thread(sub_render_record, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
 #else
-		thds[N_THREAD - 1] = std::thread(sub_render, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
+		thds[N_THREAD - 1] = std::thread(sub_render_pt, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
 #endif
 
 		for (int i = N_THREAD - 1; i >= 0; i--) {
@@ -491,8 +494,8 @@ public:
 /// <param name="threadID"></param>
 /// <param name="s">start row</param>
 /// <param name="e">end row exclusive</param>
-void sub_render(Thread_arg* a, int threadID, int s, int e) {
-	Thread_arg arg = *a;
+void sub_render_pt(Thread_arg_pt* a, int threadID, int s, int e) {
+	Thread_arg_pt arg = *a;
 
 	const Vector3f ul = *arg.ul;
 	const Vector3f delta_v = *arg.delta_v;
