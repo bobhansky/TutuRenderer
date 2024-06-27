@@ -3,10 +3,8 @@
 #include "IIntegrator.hpp"
 
 #define CHECK_LT 0		// checking world to raster
-#define MAXDEPTH 6
+#define MAXDEPTH 2
 #define SAMPLE 1
-
-
 
 // light tracing / particle tracing
 class LightTracing : public IIntegrator {
@@ -240,6 +238,8 @@ public:
 				offsetRayOrig(orig, lv.inter.nDir, rayInside);
 				if (!isShadowRayBlocked(orig, cam.position, g)) {
 					int index = cam.worldPos2PixelIndex(lv.inter.pos);
+					if (index == 581 + cam.width * 642)
+						int a = 1;
 					Vector3f col = cam.FrameBuffer.addRGB(index, res / SAMPLE);
 				}
 			}
