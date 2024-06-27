@@ -75,4 +75,5 @@ lowerleft: NEE only                                      lowerright: NEE + MIS
 </pre>
 
 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/bdpt_veach_258spp.png" width=500 height=500/> 
 
