@@ -5,6 +5,7 @@ A CPU based Path Tracer for personal interest and education.
 - Integrator
    - Path Tracing
    - Light Tracing
+   - Bidirectional Path Tracing (BDPT)
 - Matertial:
    - Lambertain Diffuse (cos weighted)
    - Microfacet Reflection and Transmittance (Cook Torrance Model with GGX distribution).
@@ -30,7 +31,7 @@ A CPU based Path Tracer for personal interest and education.
 
 ## Todo List
    - Microfacet refractive/translucent  ✅
-   - BDPT 
+   - BDPT ✅
    - don't rely on .ppm image file
 ## Usage
    Develop Environment: MSVC C++17, Visual Studio 2022
