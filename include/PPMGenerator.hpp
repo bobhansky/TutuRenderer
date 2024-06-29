@@ -20,14 +20,14 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 1;
+int SPP = 16;
 float SPP_inv = 1.f / SPP;
 
 #define EXPEDITE 1		// BVH to expedite intersection
-#define MULTITHREAD	0		// multi threads to expedite, 0 for none, 1 for std::thread, 2 for openmp
+#define MULTITHREAD	1	// multi threads to expedite, 0 for none, 1 for std::thread, 2 for openmp
 #define N_THREAD 20
 #define MIS	1			// Multiple Importance Sampling
-#define MIN_DIVISOR 0.03f
+#define MIN_DIVISOR 0.04f
 
 // these are used for debugging: saving ray info to disk
 // if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
@@ -43,8 +43,6 @@ float SPP_inv = 1.f / SPP;
 //#define HDR_ONLY	// it would disable HDR_BLOOM
 #define HDR_BLOOM
 //#define BLOOM_ONLY
-
-
 
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};
@@ -62,6 +60,7 @@ public:
 	std::vector<Texture*> normalMaps;    // normalMap array
 	std::vector<Texture*> roughnessMaps;		// texture data
 	std::vector<Texture*> metallicMaps;    // normalMap array
+	std::vector<Object*> lightlist;
 
 
 	//------------------ reading data: rendering setting and my own obj loader (replaced by OBJ_Loader)
@@ -95,11 +94,7 @@ public:
 	float amin, amax, distmin, distmax;
 	// ******* depthcueing ends ********
 //----------------- reading data ends
-
-
 	friend class Renderer;
-
-
 
 	// Constructors, check if the stream to file is correctly opened
 	// and initialze fields
@@ -324,7 +319,6 @@ public:
 			}
 
 			// initialize camera
-
 			cam.width = width;
 			cam.height = height;
 			cam.hfov = hfov;
@@ -332,6 +326,7 @@ public:
 			cam.fwdDir = viewdir;
 			cam.upDir = updir;
 			cam.initialize(bkgcolor);
+
 		}
 
 		catch (std::runtime_error e) {
@@ -340,6 +335,15 @@ public:
 			fin.close();
 			exit(-1);
 		}
+	}
+
+	void initializeLights() {
+		for (int i = 0; i < scene.objList.size(); i++) {
+			if (scene.objList[i]->mtlcolor.hasEmission()) {
+				lightlist.push_back(scene.objList[i].get());
+			}
+		}
+		std::cout << "light initialization complete \n";
 	}
 
 	// recursively read object (if any) until end of file or any extraneous info appears
@@ -834,8 +838,18 @@ public:
 				size_t index = getIndex(j, i);
 				
 				Vector3f &color = cam.FrameBuffer.rgb[index];
+
+				if (isinf(color.x) ) {
+					std::cout << j << ", " << i << "is inf\n";
+				}
+				else if(isnan(color.x))
+					std::cout << j << ", " << i << "is nan\n";
+
 #ifdef GAMMA_COORECTION
 				// gamma correction
+				//color.x = 255 * pow(clamp(0, 1, color.x), GAMMA_VAL);
+				//color.y = 255 * pow(clamp(0, 1, color.y), GAMMA_VAL);
+				//color.z = 255 * pow(clamp(0, 1, color.z), GAMMA_VAL);
 				color.x = 255 * pow(clamp(0, 1, color.x), GAMMA_VAL);
 				color.y = 255 * pow(clamp(0, 1, color.y), GAMMA_VAL);
 				color.z = 255 * pow(clamp(0, 1, color.z), GAMMA_VAL);

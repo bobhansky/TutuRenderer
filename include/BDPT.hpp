@@ -5,15 +5,14 @@
 #include <omp.h>
 #include <thread>;
 
-#define MAX_PATHLENGTH 5		// MAX_PATHLENGTH + 1 vertices in total
-#define CHECK 1 			    // check unweighted contribution of one single strategy
-#define S_CHECK 2				// when checking, set MAX_PATHLENGTH to S_CHECK + T_CHECK + 1 for performance
-#define T_CHECK 4
+#define MAX_PATHLENGTH 7		// MAX_PATHLENGTH + 1 vertices in total
+#define CHECK 0 			    // check unweighted contribution of one single strategy
+#define S_CHECK 4				// when checking, set MAX_PATHLENGTH to S_CHECK + T_CHECK + 1 for performance
+#define T_CHECK 1
 #define CHECK_MIS 1				// when checking, set it 1 if want MIS res
 
 std::mutex mutex_color;
 omp_lock_t omp_lock_color;
-
 
 class BDPT;
 
@@ -24,13 +23,13 @@ struct Thread_arg_bdpt {
 	const Vector3f* c_off_h;
 	const Vector3f* c_off_v;
 	const Vector3f* eyePos;
+
+
 	PPMGenerator* g;
 	const BDPT* bdpt;
 };
 
 void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e);
-void sub_render_bdpt_omp(Thread_arg_bdpt* a, int threadID, int s, int e);
-
 
 namespace bdpt {
 	struct eyePathVert {
@@ -216,8 +215,10 @@ public:
 			}
 			denominator += p_i_minus_1 * p_i_minus_1;
 		}
-		if (denominator < MIN_DIVISOR)
+		float res = 1 / denominator;
+		if (res < MIN_DIVISOR || isnan(res) || isinf(res))
 			return 0;
+
 		return 1 / denominator;
 	}
 
@@ -422,9 +423,9 @@ public:
 		for (int y = 0; y < g->height; y++) {
 			Vector3f v_off = y * delta_v;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 644 && y == 124) {
-					PRINT = true;
-				}
+				//if (x == 644 && y == 124) {
+				//	PRINT = true;
+				//}
 				Vector3f& color = g->cam.FrameBuffer.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 				Vector3f h_off = x * delta_h;
 				Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
@@ -501,6 +502,7 @@ public:
 								Vector3f l = ev.inter.mtlcolor.emission;
 								contrib = we * ev.throughput * l * SPP_inv;
 								if (contrib.norm2() == 0) continue;
+								//if (isnan(contrib.x) || isinf(contrib.x)) continue;
 								float misw = MISweight(epverts, lpverts, s, t, g->cam);
 #if CHECK
 								misw = CHECK_MIS ? misw : 1;
@@ -527,11 +529,11 @@ public:
 									rayInside =  wi.dot(lv.inter.nDir) < 0;
 									bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta);
 								}
-								bsdf = clamp(0, 1, bsdf);
 								float G = Geo(cam.position, cam.fwdDir, lv.inter.pos, lv.inter.nDir);
 								Vector3f we = We(lv.inter, cam);
 								contrib = l * bsdf * lv.throughput * G * we * SPP_inv;
 								if (contrib.norm2() == 0) continue;
+								//if (isnan(contrib.x) || isinf(contrib.x)) continue;
 								float misw = MISweight(epverts, lpverts, s, t, g->cam);
 
 								// connect to camera
@@ -555,7 +557,6 @@ public:
 							Vector3f connectDir = normalized(ev.inter.pos - lv.inter.pos);
 							Vector3f e_wo = normalized(epverts[t - 2].inter.pos - ev.inter.pos);
 							Vector3f evBSDF = ev.inter.mtlcolor.BxDF(-connectDir, e_wo, ev.inter.nDir, g->eta);
-							clamp(0, 1, evBSDF);
 
 							Vector3f lvBSDF;
 							Vector3f l_wo;
@@ -567,7 +568,6 @@ public:
 							else {
 								l_wo = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
 								lvBSDF = lv.inter.mtlcolor.BxDF(connectDir, l_wo, lv.inter.nDir, g->eta);
-								clamp(0, 1, lvBSDF);
 							}
 							// connecting 
 							// check if two points are not blocked
@@ -592,6 +592,7 @@ public:
 							// unweighted contribution
 							contrib = we * ev.throughput * evBSDF * G * lv.throughput * lvBSDF * l * SPP_inv;
 							if (contrib.norm2() == 0) continue;
+							//if (isnan(contrib.x) || isinf(contrib.x)) continue;
 							float misw = MISweight(epverts, lpverts, s, t, g->cam);
 #if CHECK
 							misw = CHECK_MIS ? misw : 1;
@@ -618,7 +619,8 @@ public:
 				g,
 				this
 			};
-		thds[i] = std::thread(sub_render_bdpt, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
+			// if((i * rowPerthd) <= 147 && 147 < ((i + 1) * rowPerthd))
+			thds[i] = std::thread(sub_render_bdpt, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
 		}
 
 		// last thread
@@ -634,7 +636,7 @@ public:
 		};
 		thds[N_THREAD - 1] = std::thread(sub_render_bdpt, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
 
-		for (int i = N_THREAD - 1; i >= 0; i--) {
+		for (int i = 0; i < N_THREAD; i++) {
 			thds[i].join();
 		}
 
@@ -692,6 +694,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 	for (int y = s; y < e; y++) {
 		Vector3f v_off = y * delta_v;
 		for (int x = 0; x < Ncol; x++) {
+
 			Vector3f& color = cam.FrameBuffer.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
 			Vector3f h_off = x * delta_h;
 			Vector3f pixelPos = ul + h_off + v_off + c_off_h + c_off_v;		// pixel center position in world space
@@ -752,6 +755,10 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 						// can't form path with such length
 						if (t <= 0 || t > epverts.size() || s > lpverts.size()) continue;
 
+#if CHECK
+						// Debug purpose, only check 1 unweighted contribution
+						if (t != T_CHECK || s != S_CHECK) continue;
+#endif 
 						// s == 0 case: naive path tracing
 						// no connection, so no G term
 						if (s == 0) {
@@ -765,7 +772,11 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 							Vector3f l = ev.inter.mtlcolor.emission;
 							contrib = we * ev.throughput * l;
 							if (contrib.norm2() == 0) continue;
+
 							float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
+#if CHECK
+							misw = CHECK_MIS ? misw : 1;
+#endif
 
 							estimate += misw * contrib;
 							//cam.FrameBuffer.addRGB(x + y * cam.width, misw * contrib);
@@ -790,12 +801,15 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 								rayInside = wi.dot(lv.inter.nDir) < 0;
 								bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta);
 							}
-							bsdf = clamp(0, 1, bsdf);
 							float G = Geo(cam.position, cam.fwdDir, lv.inter.pos, lv.inter.nDir);
 							Vector3f we = We(lv.inter, cam);
 							contrib = l * bsdf * lv.throughput * G * we * SPP_inv;
 							if (contrib.norm2() == 0) continue;
+
 							float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
+#if CHECK
+							misw = CHECK_MIS ? misw : 1;
+#endif
 
 							// connect to camera
 							offsetRayOrig(orig, lv.inter.nDir, rayInside);
@@ -809,6 +823,8 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 								omp_set_lock(&omp_lock_color);
 								cam.FrameBuffer.addRGB(index, misw * contrib);
 								omp_unset_lock(&omp_lock_color);
+#else
+								cam.FrameBuffer.addRGB(index, misw * contrib);
 #endif
 							}
 							continue;
@@ -823,7 +839,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 						Vector3f connectDir = normalized(ev.inter.pos - lv.inter.pos);
 						Vector3f e_wo = normalized(epverts[t - 2].inter.pos - ev.inter.pos);
 						Vector3f evBSDF = ev.inter.mtlcolor.BxDF(-connectDir, e_wo, ev.inter.nDir, g->eta);
-						clamp(0, 1, evBSDF);
+						//clamp(0, 1, evBSDF);
 
 						Vector3f lvBSDF;
 						Vector3f l_wo;
@@ -835,7 +851,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 						else {
 							l_wo = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
 							lvBSDF = lv.inter.mtlcolor.BxDF(connectDir, l_wo, lv.inter.nDir, g->eta);
-							clamp(0, 1, lvBSDF);
+							//clamp(0, 1, lvBSDF);
 						}
 						// connecting 
 						// check if two points are not blocked
@@ -852,7 +868,6 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 							rayInside = l_wo.dot(lv.inter.nDir) < 0;
 							offsetRayOrig(lorig, lv.inter.nDir, rayInside);
 						}
-
 						if (isShadowRayBlocked(eOrig, lorig, g))
 							continue;
 
@@ -860,8 +875,11 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 						// unweighted contribution
 						contrib = we * ev.throughput * evBSDF * G * lv.throughput * lvBSDF * l;
 						if (contrib.norm2() == 0) continue;
-						float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
 
+						float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
+#if CHECK
+						misw = CHECK_MIS ? misw : 1;
+#endif
 						estimate += misw * contrib;
 						//cam.FrameBuffer.addRGB(x + y * cam.width, misw * contrib);
 					}

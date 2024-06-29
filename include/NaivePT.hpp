@@ -2,7 +2,7 @@
 // Integrator: naivept
 #include "IIntegrator.hpp"
 
-#define MAXDEPTH 6
+
 
 // when evaluating pixel value, "way n" parts need to correspond to each others
 class NaivePT : public IIntegrator {

@@ -67,6 +67,5 @@ public:
 public:
 	PPMGenerator* g;
 	IIntersectStrategy* interStrategy;
-	std::mutex sampleLight_mutex;
 	IIntegrator* integrator;
 };
