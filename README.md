@@ -64,12 +64,15 @@ A CPU based Path Tracer for personal interest and education.
 -----------------------------
 ### Contrast  
 
+
 left: Whitted style Ray Tracing (shading with Blinn Phong Model)  
 right: Path Tracing  
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/contrast.png)
 
 ----------------------------
 ### others  
+<p float="left">
+   
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/junge.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/rust.png" width=500 height=500/>
 
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png" width=500 height=500/> 
@@ -80,6 +83,10 @@ right: Path Tracing
 
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png" width=500 height=500/> 
 <img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/buddha.png" width=500 height=500/> 
+
+</p>
+
+
 ![alt text](https://github.com/bobhansky/PathTracing/blob/main/img/MIS-4.png)
 
 <pre>
