@@ -7,12 +7,14 @@
 #include <random>
 #include <iostream>
 #include <stdio.h>
+#include <mutex>
 
 #include "Vector.hpp"
 
-#define DEBUG 1
+#define DEBUG 0
 #define M_PI 3.1415926535897f
 #define EPSILON 0.0005f		// be picky about it, change it to accommodate object size
+
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);
 // x is the portion
@@ -164,15 +166,17 @@ float getRandomFloat() {
 	// see 
 	// https://stackoverflow.com/questions/38367976/do-stdrandom-device-and-stdmt19937-follow-an-uniform-distribution
 
+
 	// an uniformly - distributed random number generator, use it to seed a pseudo-random generator
-	static std::random_device dev;
+	thread_local static std::random_device dev;
 	// a fast pseudo-random number generator, use this to seed a particular distribution
 #if DEBUG
-	static std::mt19937 rng(1);			// use when debug
+	thread_local static std::mt19937 rng(1);			// use when debug
 #else
-	static std::mt19937 rng(dev());	// use when release
+	thread_local static std::mt19937 rng(dev());	// use when release
 #endif
-	static std::uniform_real_distribution<float> dist(0,1); // distribution in range [0.0, 1.0)
+	thread_local static std::uniform_real_distribution<float> dist(0,1); // distribution in range [0.0, 1.0)
+	
 
 	return dist(rng);	
 }
@@ -318,6 +322,8 @@ float G_smf(const Vector3f& wi, const Vector3f& wo, const Vector3f& n, float rou
 	// in paper   Microfacet Models for Refraction through Rough Surface
 	float G1_wi = ((wi.dot(h)/wi.dot(n)) < 0 ? 0 : 1) * 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wi_n), 2)));
 	float G1_wo = ((wo.dot(h)/wo.dot(n)) < 0 ? 0 : 1) * 2 / (1 + sqrtf(1 + alpha * alpha * powf(tanf(angle_wo_n), 2)));
+	if (isnan(G1_wi) || isnan(G1_wo))
+		return 0;
 
 	return G1_wi * G1_wo;
 

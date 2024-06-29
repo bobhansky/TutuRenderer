@@ -17,11 +17,11 @@ public:
 		upDir = normalized(upDir);
 
 
-		// projection, copy from smallVCM
+		// dot, projection on camera right, up, fwd dir
 		Vector3f pos(
 			rightDir.dot(position),
 			upDir.dot(position),
-			(-fwdDir).dot(position)
+			(-fwdDir).dot(position)	// fwd is often -1
 		);
 
 		FrameBuffer.rgb.resize(width * height);

@@ -158,7 +158,6 @@ public:
 
 		Vector3f pos = (1 - u - v) * v0 + u * v1 + v * v2;
 
-
 		inter.pos = pos;
 		inter.nDir = (1 - u - v) * n0 + u * n1 + v * n2;
 		inter.nDir = normalized(inter.nDir);
@@ -166,11 +165,9 @@ public:
 		inter.mtlcolor = mtlcolor;
 		inter.obj = this;
 		
-
 		float area = getArea();
 		pdf = 1.f / area ;
 
-		
 		if (isTextureActivated) {
 			inter.normalMapIndex = normalMapIndex;
 			inter.textPos = uv0 * (1 - u - v) + uv1 * u + uv2 * v;

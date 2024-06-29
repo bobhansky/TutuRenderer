@@ -3,7 +3,7 @@
 #include "IIntegrator.hpp"
 
 #define CHECK_LT 0		// checking world to raster
-#define MAXDEPTH 2
+#define MAXDEPTH 4
 #define SAMPLE 1
 
 // light tracing / particle tracing

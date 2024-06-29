@@ -152,39 +152,7 @@ bool isShadowRayBlocked(Vector3f orig, Vector3f& lightPos, PPMGenerator* g) {
 float getLightPdf(Intersection& inter, PPMGenerator* g) {
 	if (!inter.intersected) return 0;
 
-	static std::vector<Object*> lightList;
-	static float totalArea = 0;
-	static bool firstimeCall = true;
-	int size = lightList.size();
-
-	// if first time call it, put all the emissive object into lightList
-
-	if (firstimeCall) {
-		// 3/2/2024: need lock
-#if MULTITHREAD==1
-		sampleLight_mutex.lock();
-#elif MULTITHREAD == 2
-		omp_set_lock(&light_lock_omp);
-#endif
-		for (auto& i : g->scene.objList) {
-			if (!firstimeCall)
-				break;
-
-			if (i->mtlcolor.hasEmission()) {
-				lightList.emplace_back(i.get());
-				// without lock, sometimes problem on i->getArea(), maybe due to unique_ptr
-				totalArea += i->getArea();
-			}
-		}
-		firstimeCall = false;
-#if MULTITHREAD==1
-		sampleLight_mutex.unlock();
-#elif  MULTITHREAD == 2
-		omp_unset_lock(&light_lock_omp);
-#endif;
-	}
-
-	size = lightList.size();
+	int size = g->lightlist.size();
 	// if there's no light
 	if (size == 0) {
 		return 0;
@@ -200,38 +168,8 @@ float getLightPdf(Intersection& inter, PPMGenerator* g) {
 // update the intersection, and the pdf to sample it
 // pdf of that inter is, 1/area of THE object surface area
 void sampleLight(Intersection& inter, float& pdf, PPMGenerator* g) {
-	static std::vector<Object*> lightList;
-	static float totalArea = 0;
-	static bool firstimeCall = true;
-	int size = lightList.size();
+	int size = g->lightlist.size();
 
-	// if first time call it, put all the emissive object into lightList
-
-	if (firstimeCall) {
-		// 3/2/2024: need lock
-#if MULTITHREAD == 1
-		sampleLight_mutex.lock();
-#elif MULTITHREAD == 2
-		omp_set_lock(&light_lock_omp);
-#endif
-		for (auto& i : g->scene.objList) {
-			if (!firstimeCall)
-				break;
-
-			if (i->mtlcolor.hasEmission()) {
-				lightList.emplace_back(i.get());
-				totalArea += i->getArea();	// without lock, sometimes problem on i->getArea(), maybe due to unique_ptr
-			}
-		}
-		firstimeCall = false;
-#if MULTITHREAD == 1
-		sampleLight_mutex.unlock();
-#elif MULTITHREAD == 2
-		omp_unset_lock(&light_lock_omp);
-#endif
-	}
-
-	size = lightList.size();
 	// if there's no light
 	if (size == 0) {
 		inter.intersected = false;
@@ -243,7 +181,7 @@ void sampleLight(Intersection& inter, float& pdf, PPMGenerator* g) {
 	int index = (int)(getRandomFloat() * (size - 1) + 0.4999f);
 	if (size == 1) index = 0;
 
-	Object* lightObject = lightList.at(index);
+	Object* lightObject = g->lightlist.at(index);
 
 	lightObject->samplePoint(inter, pdf);
 	// independent event p(a&&b) == p(a) *  p(b)

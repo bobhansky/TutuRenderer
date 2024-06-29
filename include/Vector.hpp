@@ -348,38 +348,26 @@ Mat4f operator*(const Mat4f& left, const Mat4f& right)
 	return res;
 }
 
-// copy from SmallVCM
+// afov is horizon tal fov
 Mat4f getPerspectiveMatrix(float aFov, float aNear, float aFar, float aspect_ratio) {
-	// Camera points towards -z.  0 < near < far.
-	// Matrix maps z range [-near, -far] to [-1, 1], after homogeneous division.
-	float f = 1.f / (std::tan(aFov * 3.1415926535897f / 360.0f));
-	float d = 1.f / (aNear - aFar);
-	Mat4f r;
-	r.ele[0] = f;     r.ele[1] = 0.0f;  r.ele[2] = 0.0f;					r.ele[3] = 0.0f;
-	r.ele[4] = 0.0f;  r.ele[5] = -f;    r.ele[6] = 0.0f;					r.ele[7] = 0.0f;
-	r.ele[8] = 0.0f;  r.ele[9] = 0.0f;  r.ele[10] = (aNear + aFar) * d;		r.ele[11] = 2.0f * aNear * aFar * d;
-	r.ele[12] = 0.0f; r.ele[13] = 0.0f; r.ele[14] = -1.0f;					r.ele[15] = 0.0f;
-	return r;
-
-
-	//Mat4f p2o;
-	//p2o.ele[0] = aNear;     p2o.ele[1] = 0.0f;  p2o.ele[2] = 0.0f;					p2o.ele[3] = 0.0f;
-	//p2o.ele[4] = 0.0f;  p2o.ele[5] = aNear;     p2o.ele[6] = 0.0f;					p2o.ele[7] = 0.0f;
-	//p2o.ele[8] = 0.0f;  p2o.ele[9] = 0.0f;		p2o.ele[10] = (aNear + aFar);			p2o.ele[11] = aNear * aFar;
-	//p2o.ele[12] = 0.0f; p2o.ele[13] = 0.0f;		p2o.ele[14] = -1.0f;					p2o.ele[15] = 0.0f;
-	//float t = std::tan((aFov / 2) * 3.1415926535897f / 180) * aNear;
-	//float b = -t;
-	//float r = aspect_ratio * t;
-	//float l = -r;
-	//Mat4f orth_trans(1, 0, 0, -(r + l) / 2,
-	//	0, 1, 0, -(t + b) / 2,
-	//	0, 0, 1, -(aNear + aFar) / 2,
-	//	0, 0, 0, 1);
-	//Mat4f orth_scale(2 / (r - l), 0, 0, 0,
-	//	0, 2 / (t - b), 0, 0,
-	//	0, 0, 2 / (aNear - aFar), 0,
-	//	0, 0, 0, 1);
-	//Mat4f orth = orth_scale * orth_trans;
-	//Mat4f proj = orth * p2o;
-	//return proj;
+	Mat4f p2o;
+	p2o.ele[0] = aNear;     p2o.ele[1] = 0.0f;  p2o.ele[2] = 0.0f;					p2o.ele[3] = 0.0f;
+	p2o.ele[4] = 0.0f;  p2o.ele[5] = aNear;     p2o.ele[6] = 0.0f;					p2o.ele[7] = 0.0f;
+	p2o.ele[8] = 0.0f;  p2o.ele[9] = 0.0f;		p2o.ele[10] = (aNear + aFar);			p2o.ele[11] = aNear * aFar;
+	p2o.ele[12] = 0.0f; p2o.ele[13] = 0.0f;		p2o.ele[14] = -1.0f;					p2o.ele[15] = 0.0f;
+	float r = std::tan((aFov / 2) * 3.1415926535897f / 180) * aNear;
+	float l = -r;
+	float t = r/aspect_ratio ;
+	float b = -t;
+	Mat4f orth_trans(1, 0, 0, -(r + l) / 2,
+		0, 1, 0, -(t + b) / 2,
+		0, 0, 1, -(aNear + aFar) / 2,
+		0, 0, 0, 1);
+	Mat4f orth_scale(2 / (r - l), 0, 0, 0,
+		0, 2 / -(t - b), 0, 0,	// t - b is flipped so I add minus
+		0, 0, 2 / (aNear - aFar), 0,
+		0, 0, 0, 1);
+	Mat4f orth = orth_scale * orth_trans;
+	Mat4f proj = orth * p2o;
+	return proj;
 }
