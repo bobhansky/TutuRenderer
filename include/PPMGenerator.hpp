@@ -20,7 +20,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 256;
 float SPP_inv = 1.f / SPP;
 
 #define EXPEDITE 1		// BVH to expedite intersection
@@ -33,10 +33,10 @@ float SPP_inv = 1.f / SPP;
 // if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
 // RECORD is only for std::treads multithreading
 #define RECORD 0		
-#define RECORD_MIN_X 282
-#define RECORD_MAX_X 380
-#define RECORD_MIN_Y 257
-#define RECORD_MAX_Y 306
+#define RECORD_MIN_X 623
+#define RECORD_MAX_X 624
+#define RECORD_MIN_Y 745
+#define RECORD_MAX_Y 746
 
 #define GAMMA_COORECTION 
 #define GAMMA_VAL 0.78f

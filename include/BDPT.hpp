@@ -7,9 +7,9 @@
 
 #define MAX_PATHLENGTH 7		// MAX_PATHLENGTH + 1 vertices in total
 #define CHECK 0 			    // check unweighted contribution of one single strategy
-#define S_CHECK 4				// when checking, set MAX_PATHLENGTH to S_CHECK + T_CHECK + 1 for performance
-#define T_CHECK 1
-#define CHECK_MIS 1				// when checking, set it 1 if want MIS res
+#define S_CHECK 1				// when checking, set MAX_PATHLENGTH to S_CHECK + T_CHECK + 1 for performance
+#define T_CHECK 4
+#define CHECK_MIS 0				// when checking, set it 1 if want MIS res
 
 std::mutex mutex_color;
 omp_lock_t omp_lock_color;
@@ -23,7 +23,6 @@ struct Thread_arg_bdpt {
 	const Vector3f* c_off_h;
 	const Vector3f* c_off_v;
 	const Vector3f* eyePos;
-
 
 	PPMGenerator* g;
 	const BDPT* bdpt;
@@ -249,11 +248,11 @@ public:
 
 			wi = normalized(wi);
 			dirPdf = ev.inter.mtlcolor.pdf(wi, wo, ev.inter.nDir, g->eta, ev.inter.mtlcolor.eta);
-			if (dirPdf == 0) break;;
 			if (TIR) {
 				wi = normalized(getReflectionDir(wo, ev.inter.nDir));
 				dirPdf = 1;
 			}
+			if (dirPdf == 0) break;;
 			float cos = abs(wi.dot(ev.inter.nDir));
 			ev.fwdPdf = dirPdf / cos;
 
@@ -348,14 +347,15 @@ public:
 
 			wi = normalized(wi);
 			dirPdf = lv.inter.mtlcolor.pdf(wi, wo, lv.inter.nDir, g->eta, lv.inter.mtlcolor.eta);
-			if (dirPdf == 0) break;
-			float cos = abs(wi.dot(lv.inter.nDir));
-			lv.fwdPdf = dirPdf / cos;
 
 			if (TIR) {
 				wi = normalized(getReflectionDir(wo, lv.inter.nDir));
 				dirPdf = 1;
 			}
+			if (dirPdf == 0) break;
+			float cos = abs(wi.dot(lv.inter.nDir));
+			lv.fwdPdf = dirPdf / cos;
+
 			if (lv.inter.mtlcolor.mType == PERFECT_REFLECTIVE || lv.inter.mtlcolor.mType == PERFECT_REFRACTIVE) {
 				lv.revPdf = lv.fwdPdf;
 				lv.isDelta = true;
@@ -423,7 +423,7 @@ public:
 		for (int y = 0; y < g->height; y++) {
 			Vector3f v_off = y * delta_v;
 			for (int x = 0; x < g->width; x++) {
-				//if (x == 644 && y == 124) {
+				//if (x == 623 && y == 745) {
 				//	PRINT = true;
 				//}
 				Vector3f& color = g->cam.FrameBuffer.rgb.at(g->getIndex(x, y));		// update this color to change the rgb array
@@ -490,6 +490,7 @@ public:
 							// Debug purpose, only check 1 unweighted contribution
 							if (t != T_CHECK || s != S_CHECK) continue;
 #endif 
+
 							// s == 0 case: naive path tracing
 							// no connection, so no G term
 							if (s == 0) {
@@ -758,6 +759,8 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 #if CHECK
 						// Debug purpose, only check 1 unweighted contribution
 						if (t != T_CHECK || s != S_CHECK) continue;
+						if (x == 623 && y == 745)
+							int a = 1;
 #endif 
 						// s == 0 case: naive path tracing
 						// no connection, so no G term
@@ -772,6 +775,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 							Vector3f l = ev.inter.mtlcolor.emission;
 							contrib = we * ev.throughput * l;
 							if (contrib.norm2() == 0) continue;
+							if (isnan(contrib.x)) continue;
 
 							float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
 #if CHECK
@@ -805,6 +809,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 							Vector3f we = We(lv.inter, cam);
 							contrib = l * bsdf * lv.throughput * G * we * SPP_inv;
 							if (contrib.norm2() == 0) continue;
+							if (isnan(contrib.x)) continue;
 
 							float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
 #if CHECK
@@ -875,6 +880,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 						// unweighted contribution
 						contrib = we * ev.throughput * evBSDF * G * lv.throughput * lvBSDF * l;
 						if (contrib.norm2() == 0) continue;
+						if (isnan(contrib.x)) continue;
 
 						float misw = bdpt.MISweight(epverts, lpverts, s, t, g->cam);
 #if CHECK
