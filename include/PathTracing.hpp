@@ -2,7 +2,7 @@
 // Integrator: path
 #include "IIntegrator.hpp"
 
-#define MAX_DEPTH 5
+#define MAX_DEPTH 9
 #define MIN_DEPTH 3
 
 class PathTracing;
@@ -26,7 +26,7 @@ void sub_render_pt(Thread_arg_pt* a, int threadID, int s, int e);
 
 // for recording
 #if RECORD
-void sub_render_record(Thread_arg* a, int threadID, int s, int e);
+void sub_render_record(Thread_arg_pt* a, int threadID, int s, int e);
 #endif
 
 
@@ -80,6 +80,11 @@ public:
 	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth,
 		int thdID = -1, bool recording = false) {
 		if (depth > MAX_DEPTH) return 0;
+#if RECORD
+		if (recording)
+			records[thdID].append("\nOrigin " + origin.toString() + ", dir " + dir.toString());
+#endif
+
 		Vector3f N = inter.nDir;
 
 		Vector3f wo = -dir;
@@ -113,11 +118,11 @@ public:
 
 		Vector3f rayOrig = inter.pos;
 		float cos = 0;
-		if (wi.dot(N) > 0) {	// if wi is reflection ray
+		if (wi.dot(N) > 0) {	
 			rayOrig = rayOrig + N * EPSILON;
 			cos = N.dot(wi);
 		}
-		else {	// if wi is refraction ray
+		else {	
 			rayOrig = rayOrig - N * EPSILON;
 			cos = (-N).dot(wi);
 		}
@@ -447,7 +452,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 1345 && y == 60) {
+				if (x == 623 && y == 745) {
 					PRINT = true;
 				}
 
@@ -529,8 +534,8 @@ void sub_render_pt(Thread_arg_pt* a, int threadID, int s, int e) {
 
 
 #if RECORD
-void sub_render_record(Thread_arg* a, int threadID, int s, int e) {
-	Thread_arg arg = *a;
+void sub_render_record(Thread_arg_pt* a, int threadID, int s, int e) {
+	Thread_arg_pt arg = *a;
 
 	const Vector3f ul = *arg.ul;
 	const Vector3f delta_v = *arg.delta_v;
