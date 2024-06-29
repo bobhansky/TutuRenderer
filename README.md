@@ -73,16 +73,16 @@ right: Path Tracing
 ### others  
 <p float="left">
    
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/junge.png" width=500 height=500/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/rust.png" width=500 height=500/>
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/junge.png" width=400 height=400/> <img src="https://github.com/bobhansky/PathTracing/blob/main/img/rust.png" width=400 height=400/>
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png" width=500 height=500/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/copper_1024.png" width=400 height=400/> 
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glassSphere_512.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/roughGlass_512.png" width=500 height=500/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glassSphere_512.png" width=400 height=400/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/roughGlass_512.png" width=400 height=400/> 
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png" width=500 height=500/>   <img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny_bdpt_spp256.png" width=500 height=500/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny.png" width=400 height=400/>   <img src="https://github.com/bobhansky/PathTracing/blob/main/img/glass_bunny_bdpt_spp256.png" width=400 height=400/> 
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png" width=500 height=500/> 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png" width=500 height=500/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/buddha.png" width=500 height=500/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/theSpace.png" width=400 height=400/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/space_flaw.png" width=400 height=400/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/radio.png" width=400 height=400/>  <img src="https://github.com/bobhansky/PathTracing/blob/main/img/buddha.png" width=400 height=400/> 
 
 </p>
 
@@ -96,7 +96,7 @@ lowerleft: NEE only                                      lowerright: NEE + MIS
 </pre>
 
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/veach_bdpt_spp512_v1.2.png" width=500 height=500/> 
+<img src="https://github.com/bobhansky/PathTracing/blob/main/img/veach_bdpt_spp512_v1.2.png" width=400 height=400/> 
 <pre>
 ↑ render with bidirection path tracing
 </pre>
