@@ -34,7 +34,9 @@ A CPU based Path Tracer for personal interest and education.
    - BDPT ✅
    - don't rely on .ppm image file
 ## Usage
-   ./pathTracing config.txt
+   <pre>
+      $ ./PathTracing.exe config.txt
+   </pre>
 
    Develop Environment: MSVC C++17, Visual Studio 2022
 
