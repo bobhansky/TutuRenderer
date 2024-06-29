@@ -33,6 +33,15 @@ A CPU based Path Tracer for personal interest and education.
    - Microfacet refractive/translucent  ✅
    - BDPT ✅
    - don't rely on .ppm image file
+   - 6/29/2024:
+     
+         - bdpt with normal mapping
+     
+         - better config file
+     
+         - image based lighting
+     
+         - Subsurface scattering   
 ## Usage
    <pre>
       $ ./PathTracing.exe config.txt
