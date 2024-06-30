@@ -1,5 +1,5 @@
 
-A CPU based Path Tracer for personal interest and education.
+A CPU based offline Renderer for personal interest and education.
 
 ## Features
 - Integrator
