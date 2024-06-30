@@ -1,4 +1,4 @@
-# PathTracing
+
 A CPU based Path Tracer for personal interest and education.
 
 ## Features
