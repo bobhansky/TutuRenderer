@@ -96,8 +96,5 @@ lowerleft: NEE only                                      lowerright: NEE + MIS
 </pre>
 
 
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/veach_bdpt_spp512_v1.2.png" width=400 height=400/> 
-<pre>
-↑ render with bidirection path tracing
-</pre>
+<img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_spp512.png" width=400 height=400/> 
 
