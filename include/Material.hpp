@@ -62,7 +62,7 @@ public:
 	Vector3f BxDF(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float eta_scene, bool TIR = false) {
 		switch (mType) {
 		case LAMBERTIAN: {
-			float cos_theta = wo.dot(N);
+			float cos_theta = wi.dot(N);
 			// account for reflection contribution only
 			if (cos_theta >= 0.f) {
 				return diffuse / M_PI;
@@ -75,7 +75,7 @@ public:
 			// Cook-Torrance Model
 
 			Vector3f h = normalized(wi + wo);
-			float costheta = h.dot(wo);
+			float costheta = h.dot(wi);
 
 			Vector3f F0(0.04f);	// should be 0.04			
 			F0 = lerp(F0, this->diffuse, this->metallic);
@@ -102,14 +102,13 @@ public:
 				interN = -N;
 				std::swap(eta_i, eta_t);
 			}
-			float F = fresnel(wo, interN, eta_i, eta_t);
 
 			// if wi is reflection dir
 			if (wi.dot(interN) >= 0) {
 				Vector3f h = normalized(wo + wi);
-				float cosTheta = h.dot(wo);
+				float cosTheta = h.dot(wi);
 				cosTheta = abs(cosTheta);
-				float F = fresnel(wo, h, eta_i, eta_t);
+				float F = fresnel(wi, h, eta_i, eta_t);
 				if (TIR) 
 					F = 1.f;
 				float D = D_ndf(h, interN, roughness);
@@ -125,7 +124,7 @@ public:
 				if (h.dot(interN) < 0) h = -h;
 				float cos_ih = wi.dot(h), cos_oh = wo.dot(h), 
 					cos_in = wi.dot(interN), cos_on = wo.dot(interN);
-				float F = fresnel(wo, h, eta_i, eta_t);
+				float F = fresnel(wi, h, eta_i, eta_t);
 				float D = D_ndf(h, interN, roughness);
 				float G = G_smf(wi, wo, interN, roughness, h);
 				float numerator = abs(cos_ih) * abs(cos_oh) * eta_t * eta_t * (1 - F) * G * D;
@@ -155,10 +154,10 @@ public:
 				interN = -N;
 				std::swap(eta_i, eta_t);
 			}
-			F = fresnel(wo, interN, eta_i, eta_t);
+			F = fresnel(wi, interN, eta_i, eta_t);
 			Vector3f transDir = normalized(getRefractionDir(wo, interN, eta_i, eta_t));
 
-			interN = interN.dot(wi) < 0 ? -interN : interN;
+			interN = interN.dot(wo) < 0 ? -interN : interN;
 
 			if (TIR) 
 				return 1 / interN.dot(wi);
