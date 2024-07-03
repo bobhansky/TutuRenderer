@@ -11,7 +11,7 @@
 
 #include "Vector.hpp"
 
-#define DEBUG 0
+#define DEBUG 1
 #define M_PI 3.1415926535897f
 #define EPSILON 0.05f		// be picky about it, change it to accommodate object size
 
@@ -165,7 +165,7 @@ bool existIn(std::string& ele, std::vector<std::string>& v) {
 float getRandomFloat() {
 	// see 
 	// https://stackoverflow.com/questions/38367976/do-stdrandom-device-and-stdmt19937-follow-an-uniform-distribution
-
+	//static int callt = 0;
 
 	// an uniformly - distributed random number generator, use it to seed a pseudo-random generator
 	thread_local static std::random_device dev;
@@ -177,7 +177,7 @@ float getRandomFloat() {
 #endif
 	thread_local static std::uniform_real_distribution<float> dist(0,1); // distribution in range [0.0, 1.0)
 	
-
+	//std::cout << "call random " << ++callt << "times \n";
 	return dist(rng);	
 }
 

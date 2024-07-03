@@ -57,12 +57,12 @@ void changeNormalDir(Intersection& inter, PPMGenerator* g) {
 		res.y = T.y * color.x + B.y * color.y + nDir.y * color.z;
 		res.z = T.z * color.x + B.z * color.y + nDir.z * color.z;
 
-		inter.nDir = normalized(res);
+		inter.Ns = normalized(res);
 		break;
 	}
 
 	case SPEHRE: {
-		Vector3f nDir = inter.nDir;
+		Vector3f nDir = inter.Ng;
 		Vector3f T = Vector3f(-nDir.y / sqrtf(nDir.x * nDir.x + nDir.y * nDir.y),
 			nDir.x / sqrtf(nDir.x * nDir.x + nDir.y * nDir.y), 0);
 
@@ -73,7 +73,7 @@ void changeNormalDir(Intersection& inter, PPMGenerator* g) {
 		res.y = T.y * color.x + B.y * color.y + nDir.y * color.z;
 		res.z = T.z * color.x + B.z * color.y + nDir.z * color.z;
 
-		inter.nDir = normalized(res);
+		inter.Ns = normalized(res);
 		break;
 	}
 
@@ -101,7 +101,7 @@ void textureModify(Intersection& inter, PPMGenerator* g) {
 
 	// ROUGHNESS
 	if (inter.roughnessMapIndex != -1) {
-		if (g->roughnessMaps.size() <= inter.diffuseIndex) {
+		if (g->roughnessMaps.size() <= inter.roughnessMapIndex) {
 			std::cout <<
 				"\ninter.roughnessIndex is greater than roughness_texture.size()\nImport texture files in config.txt \n";
 			exit(1);

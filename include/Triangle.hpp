@@ -53,7 +53,8 @@ public:
 			inter.t = res.x;
 			inter.pos = orig + inter.t * dir;
 			inter.mtlcolor = this->mtlcolor;
-			inter.nDir = normalized((n0 * (1 - res.y - res.z)) + n1 * res.y + n2 * res.z);	// smooth shading
+			inter.Ns = normalized((n0 * (1 - res.y - res.z)) + n1 * res.y + n2 * res.z);	// smooth shading
+			inter.Ng = normalized(crossProduct(E1, E2));
 
 			// inter.nDir = normalized(crossProduct(E1, E2));	// flat shading
 
@@ -159,8 +160,9 @@ public:
 		Vector3f pos = (1 - u - v) * v0 + u * v1 + v * v2;
 
 		inter.pos = pos;
-		inter.nDir = (1 - u - v) * n0 + u * n1 + v * n2;
-		inter.nDir = normalized(inter.nDir);
+		inter.Ng = (1 - u - v) * n0 + u * n1 + v * n2;
+		inter.Ng = normalized(inter.Ng);
+		inter.Ns = inter.Ng;
 		inter.intersected = true;
 		inter.mtlcolor = mtlcolor;
 		inter.obj = this;

@@ -5,11 +5,11 @@
 #include <omp.h>
 #include <thread>;
 
-#define MAX_PATHLENGTH 7		// MAX_PATHLENGTH + 1 vertices in total
+#define MAX_PATHLENGTH 5		// MAX_PATHLENGTH + 1 vertices in total
 #define CHECK 0 			    // check unweighted contribution of one single strategy
 #define S_CHECK 1				// when checking, set MAX_PATHLENGTH to S_CHECK + T_CHECK + 1 for performance
-#define T_CHECK 4
-#define CHECK_MIS 0				// when checking, set it 1 if want MIS res
+#define T_CHECK 6
+#define CHECK_MIS 1				// when checking, set it 1 if want MIS res
 
 std::mutex mutex_color;
 omp_lock_t omp_lock_color;
@@ -84,7 +84,7 @@ public:
 			bdpt::eyePathVert lightPrev = epverts[t - 2];
 			bdpt::eyePathVert lightvert = epverts[t - 1];
 			Vector3f wo = normalized(lightPrev.inter.pos - lightvert.inter.pos);
-			float cos = abs(lightvert.inter.nDir.dot(wo));
+			float cos = abs(lightvert.inter.Ng.dot(wo));
 			float dirpdf = cos / M_PI;
 			dirpdf = dirpdf / cos;	// projected solid angle
 			float pickpdf = getLightPdf(lightvert.inter, g);
@@ -95,33 +95,33 @@ public:
 		else {
 			bdpt::lightPathVert sEndvert = lpverts[s - 1];
 			bdpt::eyePathVert tEndvert = epverts[t - 1];
-			G_connect = Geo(sEndvert.inter.pos, sEndvert.inter.nDir, tEndvert.inter.pos, tEndvert.inter.nDir);
+			G_connect = Geo(sEndvert.inter.pos, sEndvert.inter.Ng, tEndvert.inter.pos, tEndvert.inter.Ng);
 			Vector3f tEnd2sEnd = normalized(sEndvert.inter.pos - tEndvert.inter.pos);
 			// reevaluate direction pdf
 			if (t == 1) {
 				Vector3f cam2sEnd = normalized(sEndvert.inter.pos - tEndvert.inter.pos);
-				float camcos = tEndvert.inter.nDir.dot(cam2sEnd);
+				float camcos = tEndvert.inter.Ng.dot(cam2sEnd);
 				float d = cam.imagePlaneDist / camcos;
 				pdf_tEndFwd = (cam.filmPlaneAreaInv * d * d / camcos) / camcos;	// projected solid angle
 				pdf_tEndRev = cam.lensAreaInv;	// no actual reverse pdf
 
 				Vector3f s2prev = normalized(lpverts[s - 2].inter.pos - sEndvert.inter.pos);
-				pdf_sEndFwd = sEndvert.inter.mtlcolor.pdf(-cam2sEnd, s2prev, sEndvert.inter.nDir, g->eta, sEndvert.inter.mtlcolor.eta)
-					/ abs((-cam2sEnd).dot(sEndvert.inter.nDir));
-				pdf_sEndRev = sEndvert.inter.mtlcolor.pdf(s2prev, -cam2sEnd, sEndvert.inter.nDir, g->eta, sEndvert.inter.mtlcolor.eta)
-					/ abs(s2prev.dot(sEndvert.inter.nDir));
+				pdf_sEndFwd = sEndvert.inter.mtlcolor.pdf(-cam2sEnd, s2prev, sEndvert.inter.Ns, g->eta, sEndvert.inter.mtlcolor.eta)
+					/ abs((-cam2sEnd).dot(sEndvert.inter.Ng));
+				pdf_sEndRev = sEndvert.inter.mtlcolor.pdf(s2prev, -cam2sEnd, sEndvert.inter.Ns, g->eta, sEndvert.inter.mtlcolor.eta)
+					/ abs(s2prev.dot(sEndvert.inter.Ng));
 			}
 			else if (s == 1) {
 				Vector3f light2tEnd = normalized(tEndvert.inter.pos - sEndvert.inter.pos);
-				float cos = sEndvert.inter.nDir.dot(light2tEnd);
+				float cos = sEndvert.inter.Ng.dot(light2tEnd);
 				pdf_sEndFwd = cos / M_PI / cos;	// projected solid angle
 				pdf_sEndRev = sEndvert.revPdf;	// no actual reverse pdf
 
 				Vector3f t2prev = normalized(epverts[t - 2].inter.pos - tEndvert.inter.pos);
-				pdf_tEndFwd = tEndvert.inter.mtlcolor.pdf(-light2tEnd, t2prev, tEndvert.inter.nDir, g->eta, tEndvert.inter.mtlcolor.eta)
-					/ abs((-light2tEnd).dot(tEndvert.inter.nDir));
-				pdf_tEndRev = tEndvert.inter.mtlcolor.pdf(t2prev, -light2tEnd, tEndvert.inter.nDir, g->eta, tEndvert.inter.mtlcolor.eta)
-					/ abs(t2prev.dot(tEndvert.inter.nDir));
+				pdf_tEndFwd = tEndvert.inter.mtlcolor.pdf(-light2tEnd, t2prev, tEndvert.inter.Ns, g->eta, tEndvert.inter.mtlcolor.eta)
+					/ abs((-light2tEnd).dot(tEndvert.inter.Ng));
+				pdf_tEndRev = tEndvert.inter.mtlcolor.pdf(t2prev, -light2tEnd, tEndvert.inter.Ns, g->eta, tEndvert.inter.mtlcolor.eta)
+					/ abs(t2prev.dot(tEndvert.inter.Ng));
 			}
 			// most cases
 			else {
@@ -129,15 +129,15 @@ public:
 				Vector3f s2prev = normalized(lpverts[s - 2].inter.pos - sEndvert.inter.pos);
 				Vector3f t2prev = normalized(epverts[t - 2].inter.pos - tEndvert.inter.pos);
 
-				pdf_sEndFwd = sEndvert.inter.mtlcolor.pdf(s2t, s2prev, sEndvert.inter.nDir, g->eta, sEndvert.inter.mtlcolor.eta)
-					/ abs(s2t.dot((sEndvert.inter.nDir)));
-				pdf_sEndRev = sEndvert.inter.mtlcolor.pdf(s2prev, s2t, sEndvert.inter.nDir, g->eta, sEndvert.inter.mtlcolor.eta)
-					/ abs(s2prev.dot((sEndvert.inter.nDir)));
+				pdf_sEndFwd = sEndvert.inter.mtlcolor.pdf(s2t, s2prev, sEndvert.inter.Ns, g->eta, sEndvert.inter.mtlcolor.eta)
+					/ abs(s2t.dot((sEndvert.inter.Ng)));
+				pdf_sEndRev = sEndvert.inter.mtlcolor.pdf(s2prev, s2t, sEndvert.inter.Ns, g->eta, sEndvert.inter.mtlcolor.eta)
+					/ abs(s2prev.dot((sEndvert.inter.Ng)));
 
-				pdf_tEndFwd = tEndvert.inter.mtlcolor.pdf(-s2t, t2prev, tEndvert.inter.nDir, g->eta, tEndvert.inter.mtlcolor.eta)
-					/ abs((-s2t).dot(tEndvert.inter.nDir));
-				pdf_tEndRev = tEndvert.inter.mtlcolor.pdf(t2prev, -s2t, tEndvert.inter.nDir, g->eta, tEndvert.inter.mtlcolor.eta)
-					/ abs(t2prev.dot(tEndvert.inter.nDir));
+				pdf_tEndFwd = tEndvert.inter.mtlcolor.pdf(-s2t, t2prev, tEndvert.inter.Ns, g->eta, tEndvert.inter.mtlcolor.eta)
+					/ abs((-s2t).dot(tEndvert.inter.Ng));
+				pdf_tEndRev = tEndvert.inter.mtlcolor.pdf(t2prev, -s2t, tEndvert.inter.Ns, g->eta, tEndvert.inter.mtlcolor.eta)
+					/ abs(t2prev.dot(tEndvert.inter.Ng));
 			}
 		}
 		// ************************* connected vertex update ends *******************************
@@ -243,17 +243,17 @@ public:
 
 			// sample next inter
 			Vector3f wo = -wi;
-			auto [success, TIR] = ev.inter.mtlcolor.sampleDirection(wo, ev.inter.nDir, wi, g->eta);
+			auto [success, TIR] = ev.inter.mtlcolor.sampleDirection(wo, ev.inter.Ns, wi, g->eta);
 			if (!success) break;
 
 			wi = normalized(wi);
-			dirPdf = ev.inter.mtlcolor.pdf(wi, wo, ev.inter.nDir, g->eta, ev.inter.mtlcolor.eta);
+			dirPdf = ev.inter.mtlcolor.pdf(wi, wo, ev.inter.Ns, g->eta, ev.inter.mtlcolor.eta);
 			if (TIR) {
-				wi = normalized(getReflectionDir(wo, ev.inter.nDir));
+				wi = normalized(getReflectionDir(wo, ev.inter.Ns));
 				dirPdf = 1;
 			}
 			if (dirPdf == 0) break;;
-			float cos = abs(wi.dot(ev.inter.nDir));
+			float cos = abs(wi.dot(ev.inter.Ng));
 			ev.fwdPdf = dirPdf / cos;
 
 			if (ev.inter.mtlcolor.mType == PERFECT_REFLECTIVE || ev.inter.mtlcolor.mType == PERFECT_REFRACTIVE) {
@@ -261,12 +261,12 @@ public:
 				ev.isDelta = true;
 			}
 			else {
-				ev.revPdf = ev.inter.mtlcolor.pdf(wo, wi, ev.inter.nDir, g->eta, ev.inter.mtlcolor.eta);
-				ev.revPdf = ev.revPdf / abs(wo.dot(ev.inter.nDir));
+				ev.revPdf = ev.inter.mtlcolor.pdf(wo, wi, ev.inter.Ns, g->eta, ev.inter.mtlcolor.eta);
+				ev.revPdf = ev.revPdf / abs(wo.dot(ev.inter.Ng));
 				ev.isDelta = false;
 			}
 			bdpt::eyePathVert pre = epverts[size - 1];
-			ev.G = Geo(pre.inter.pos, pre.inter.nDir, ev.inter.pos, ev.inter.nDir);
+			ev.G = Geo(pre.inter.pos, pre.inter.Ng, ev.inter.pos, ev.inter.Ng);
 			epverts.emplace_back(ev);
 
 			// if eye vertex == light, forming a C(t=n,s=0) case
@@ -274,15 +274,15 @@ public:
 				return;
 
 			// for next vertex
-			Vector3f bsdf = ev.inter.mtlcolor.BxDF(wi, wo, ev.inter.nDir, g->eta, TIR);
+			Vector3f bsdf = ev.inter.mtlcolor.BxDF(wi, wo, ev.inter.Ng, ev.inter.Ns, g->eta, false, TIR);
 			if (dirPdf < MIN_DIVISOR)
 				break;
 			tp = tp * bsdf * cos / dirPdf;
 
 			// find next inter
 			orig = ev.inter.pos;
-			bool rayInside = ev.inter.nDir.dot(wi) < 0;
-			offsetRayOrig(orig, ev.inter.nDir, rayInside);
+			bool rayInside = ev.inter.Ns.dot(wi) < 0;
+			offsetRayOrig(orig, ev.inter.Ns, rayInside);
 			interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
 
 			if (!nxtInter.intersected)
@@ -311,18 +311,17 @@ public:
 
 		float dirPdf;
 		Vector3f wi;
-		if (!sampleLightDir(lightInter.nDir, dirPdf, wi))
+		if (!sampleLightDir(lightInter.Ng, dirPdf, wi))
 			return;
 		wi = normalized(wi);
-
-		float wi_n_cos = abs(wi.dot(lightInter.nDir));
+		float wi_n_cos = abs(wi.dot(lightInter.Ng));
 		lpv.fwdPdf = dirPdf / wi_n_cos;
 		lpverts.emplace_back(lpv);
 		// for s = 2
 		tp = lpverts[0].throughput * wi_n_cos / dirPdf;
 
 		Vector3f orig = lightInter.pos;
-		offsetRayOrig(orig, lightInter.nDir, false);
+		offsetRayOrig(orig, lightInter.Ns, false);
 		Intersection nxtInter;
 		interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
 		if (!nxtInter.intersected)
@@ -332,7 +331,7 @@ public:
 
 		// random walk
 		int size = lpverts.size();
-		while (size < MAX_PATHLENGTH + 1) {
+		while (size < MAX_PATHLENGTH) {	// no t = 0 case
 			bdpt::lightPathVert lv;
 			lv.inter = nxtInter;
 			lv.throughput = tp;
@@ -342,18 +341,18 @@ public:
 
 			// sample next inter
 			Vector3f wo = -wi;
-			auto [success, TIR] = lv.inter.mtlcolor.sampleDirection(wo, lv.inter.nDir, wi, g->eta);
+			auto [success, TIR] = lv.inter.mtlcolor.sampleDirection(wo, lv.inter.Ns, wi, g->eta);
 			if (!success) break;
 
 			wi = normalized(wi);
-			dirPdf = lv.inter.mtlcolor.pdf(wi, wo, lv.inter.nDir, g->eta, lv.inter.mtlcolor.eta);
+			dirPdf = lv.inter.mtlcolor.pdf(wi, wo, lv.inter.Ns, g->eta, lv.inter.mtlcolor.eta);
 
 			if (TIR) {
-				wi = normalized(getReflectionDir(wo, lv.inter.nDir));
+				wi = normalized(getReflectionDir(wo, lv.inter.Ns));
 				dirPdf = 1;
 			}
 			if (dirPdf == 0) break;
-			float cos = abs(wi.dot(lv.inter.nDir));
+			float cos = abs(wi.dot(lv.inter.Ng));
 			lv.fwdPdf = dirPdf / cos;
 
 			if (lv.inter.mtlcolor.mType == PERFECT_REFLECTIVE || lv.inter.mtlcolor.mType == PERFECT_REFRACTIVE) {
@@ -361,27 +360,27 @@ public:
 				lv.isDelta = true;
 			}
 			else {
-				lv.revPdf = lv.inter.mtlcolor.pdf(wo, wi, lv.inter.nDir, g->eta, lv.inter.mtlcolor.eta);
-				lv.revPdf = lv.revPdf / abs(wo.dot(lv.inter.nDir));
+				lv.revPdf = lv.inter.mtlcolor.pdf(wo, wi, lv.inter.Ns, g->eta, lv.inter.mtlcolor.eta);
+				lv.revPdf = lv.revPdf / abs(wo.dot(lv.inter.Ng));
 				lv.isDelta = false;
 			}
 			bdpt::lightPathVert pre = lpverts[size - 1];
-			lv.G = Geo(pre.inter.pos, pre.inter.nDir, lv.inter.pos, lv.inter.nDir);
+			lv.G = Geo(pre.inter.pos, pre.inter.Ng, lv.inter.pos, lv.inter.Ng);
 			lpverts.emplace_back(lv);
 
 			if (lv.inter.mtlcolor.hasEmission())
 				return;
 
 			// for next vertex
-			Vector3f bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta, TIR);
+			Vector3f bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.Ng, lv.inter.Ns, g->eta, true, TIR);
 			if (dirPdf < MIN_DIVISOR)
 				break;
 			tp = tp * bsdf * cos / dirPdf;
 
 			// find next inter
 			orig = lv.inter.pos;
-			bool rayInside = lv.inter.nDir.dot(wi) < 0;
-			offsetRayOrig(orig, lv.inter.nDir, rayInside);
+			bool rayInside = lv.inter.Ns.dot(wi) < 0;
+			offsetRayOrig(orig, lv.inter.Ns, rayInside);
 			interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
 			if (!nxtInter.intersected)
 				return;
@@ -437,13 +436,14 @@ public:
 					std::vector<bdpt::eyePathVert> epverts;
 					std::vector<bdpt::lightPathVert> lpverts;
 
+
 					Vector3f wi = rayDir;
 					// build eye path vertices
 					// add camera point and first intersection vertex
 					bdpt::eyePathVert ev;
 					ev.inter.pos = eyePos;
 					ev.inter.intersected = true;
-					ev.inter.nDir = cam.fwdDir;
+					ev.inter.Ng = cam.fwdDir;
 					ev.throughput = Vector3f(1.f);
 					ev.revPdf = cam.lensAreaInv;	// no reverse pdf for t = 1 case, here just to store the pdf of sampling camera point
 					
@@ -465,9 +465,10 @@ public:
 					ev.inter = eVert2;
 					ev.throughput = tp;
 
-					epverts.emplace_back(ev);
-					buildEyePath(epverts);
+					//epverts.emplace_back(ev);
+					//buildEyePath(epverts);
 					buildLightPath(lpverts);
+
 
 					Intersection pixelInter;
 					pixelInter.pos = pixelPos;
@@ -476,7 +477,7 @@ public:
 
 					// compute contribution
 					// only t >= 1 case contribute
-					if (epverts.size() < 2) 
+					if (epverts.size() < 1) 
 						continue;
 
 					for (int pathLength = 1; pathLength <= MAX_PATHLENGTH; pathLength++) {
@@ -494,10 +495,6 @@ public:
 							// s == 0 case: naive path tracing
 							// no connection, so no G term
 							if (s == 0) {
-								if (ev.inter.mtlcolor.mType == UNLIT) {
-									cam.FrameBuffer.addRGB(x + y * cam.width, ev.inter.mtlcolor.diffuse);
-									continue;
-								}
 								bdpt::eyePathVert ev = epverts[t-1];
 								if (!ev.inter.mtlcolor.hasEmission()) continue;
 								Vector3f l = ev.inter.mtlcolor.emission;
@@ -518,7 +515,8 @@ public:
 								if (lv.inter.mtlcolor.hasEmission()) continue;
 								Vector3f l = lpverts[0].inter.mtlcolor.emission;
 								Vector3f orig = lv.inter.pos;
-								Vector3f wo = normalized(cam.position - orig);
+								Vector3f wi = normalized(cam.position - orig);
+								Vector3f wo;
 								bool rayInside; 
 								Vector3f bsdf;
 								if (s == 1) {
@@ -526,11 +524,11 @@ public:
 									rayInside = false;
 								}
 								else {
-									wi = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
-									rayInside =  wi.dot(lv.inter.nDir) < 0;
-									bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta);
+									wo = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
+									rayInside =  wi.dot(lv.inter.Ns) < 0;
+									bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.Ng, lv.inter.Ns, g->eta, true);
 								}
-								float G = Geo(cam.position, cam.fwdDir, lv.inter.pos, lv.inter.nDir);
+								float G = Geo(cam.position, cam.fwdDir, lv.inter.pos, lv.inter.Ng);
 								Vector3f we = We(lv.inter, cam);
 								contrib = l * bsdf * lv.throughput * G * we * SPP_inv;
 								if (contrib.norm2() == 0) continue;
@@ -538,9 +536,10 @@ public:
 								float misw = MISweight(epverts, lpverts, s, t, g->cam);
 
 								// connect to camera
-								offsetRayOrig(orig, lv.inter.nDir, rayInside);
+								offsetRayOrig(orig, lv.inter.Ns, rayInside);
 								if (!isShadowRayBlocked(orig, cam.position, g)) {
 									int index = cam.worldPos2PixelIndex(lv.inter.pos);
+
 #if CHECK
 									misw = CHECK_MIS ? misw : 1;
 #endif
@@ -557,39 +556,39 @@ public:
 
 							Vector3f connectDir = normalized(ev.inter.pos - lv.inter.pos);
 							Vector3f e_wo = normalized(epverts[t - 2].inter.pos - ev.inter.pos);
-							Vector3f evBSDF = ev.inter.mtlcolor.BxDF(-connectDir, e_wo, ev.inter.nDir, g->eta);
+							Vector3f evBSDF = ev.inter.mtlcolor.BxDF(-connectDir, e_wo, ev.inter.Ng, ev.inter.Ns, g->eta);
 
 							Vector3f lvBSDF;
 							Vector3f l_wo;
 							if (s == 1) {
-								if (connectDir.dot(lv.inter.nDir) >= 0)
+								if (connectDir.dot(lv.inter.Ns) >= 0)
 									lvBSDF = Vector3f(1.f);
 								else lvBSDF = Vector3f(0);
 							}
 							else {
 								l_wo = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
-								lvBSDF = lv.inter.mtlcolor.BxDF(connectDir, l_wo, lv.inter.nDir, g->eta);
+								lvBSDF = lv.inter.mtlcolor.BxDF(connectDir, l_wo, lv.inter.Ng, lv.inter.Ns, g->eta);
 							}
 							// connecting 
 							// check if two points are not blocked
 							Vector3f eOrig = ev.inter.pos;
-							bool rayInside = e_wo.dot(ev.inter.nDir) < 0;
-							offsetRayOrig(eOrig, ev.inter.nDir, rayInside);
+							bool rayInside = e_wo.dot(ev.inter.Ns) < 0;
+							offsetRayOrig(eOrig, ev.inter.Ns, rayInside);
 							
 							Vector3f lorig = lv.inter.pos;
 							if (s == 1) {
 								lorig = lv.inter.pos;
-								offsetRayOrig(lorig, lv.inter.nDir, false);
+								offsetRayOrig(lorig, lv.inter.Ns, false);
 							}
 							else {
-								rayInside = l_wo.dot(lv.inter.nDir) < 0;
-								offsetRayOrig(lorig, lv.inter.nDir, rayInside);
+								rayInside = l_wo.dot(lv.inter.Ns) < 0;
+								offsetRayOrig(lorig, lv.inter.Ns, rayInside);
 							}
 							
 							if (isShadowRayBlocked(eOrig, lorig, g))
 								continue;
 
-							float G = Geo(ev.inter.pos, ev.inter.nDir, lv.inter.pos, lv.inter.nDir);
+							float G = Geo(ev.inter.pos, ev.inter.Ng, lv.inter.pos, lv.inter.Ng);
 							// unweighted contribution
 							contrib = we * ev.throughput * evBSDF * G * lv.throughput * lvBSDF * l * SPP_inv;
 							if (contrib.norm2() == 0) continue;
@@ -702,6 +701,8 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 			Vector3f rayDir;
 			rayDir = normalized(pixelPos - eyePos);
 			Vector3f estimate;
+			if (x == 683 && y == 649)
+				int a = 0;
 
 			for (int i = 0; i < SPP; i++) {
 				std::vector<bdpt::eyePathVert> epverts;
@@ -713,7 +714,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 				bdpt::eyePathVert ev;
 				ev.inter.pos = eyePos;
 				ev.inter.intersected = true;
-				ev.inter.nDir = cam.fwdDir;
+				ev.inter.Ng = cam.fwdDir;
 				ev.throughput = Vector3f(1.f);
 				ev.revPdf = cam.lensAreaInv;	// no reverse pdf for t = 1 case, here just to store the pdf of sampling camera point
 
@@ -724,7 +725,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 				ev.isDelta = false;
 
 				epverts.emplace_back(ev);
-
+				
 				float pdfCam_w = d2 * cam.lensAreaInv * cam.filmPlaneAreaInv / wi_n_cos;
 				Vector3f tp = epverts[0].throughput * wi_n_cos / pdfCam_w;
 				Intersection eVert2;
@@ -759,15 +760,12 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 #if CHECK
 						// Debug purpose, only check 1 unweighted contribution
 						if (t != T_CHECK || s != S_CHECK) continue;
-						if (x == 623 && y == 745)
-							int a = 1;
 #endif 
 						// s == 0 case: naive path tracing
 						// no connection, so no G term
 						if (s == 0) {
 							if (ev.inter.mtlcolor.mType == UNLIT) {
 								estimate += ev.inter.mtlcolor.diffuse;
-								//cam.FrameBuffer.addRGB(x + y * cam.width, ev.inter.mtlcolor.diffuse);
 								continue;
 							}
 							bdpt::eyePathVert ev = epverts[t - 1];
@@ -783,7 +781,6 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 #endif
 
 							estimate += misw * contrib;
-							//cam.FrameBuffer.addRGB(x + y * cam.width, misw * contrib);
 							continue;
 						}
 						// light tracing and connect to camera case
@@ -793,7 +790,8 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 							if (lv.inter.mtlcolor.hasEmission()) continue;
 							Vector3f l = lpverts[0].inter.mtlcolor.emission;
 							Vector3f orig = lv.inter.pos;
-							Vector3f wo = normalized(cam.position - orig);
+							Vector3f wi = normalized(cam.position - orig);
+							Vector3f wo;
 							bool rayInside;
 							Vector3f bsdf;
 							if (s == 1) {
@@ -801,11 +799,11 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 								rayInside = false;
 							}
 							else {
-								wi = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
-								rayInside = wi.dot(lv.inter.nDir) < 0;
-								bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.nDir, g->eta);
+								wo = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
+								rayInside = wi.dot(lv.inter.Ng) < 0;
+								bsdf = lv.inter.mtlcolor.BxDF(wi, wo, lv.inter.Ng, lv.inter.Ns, g->eta, true);
 							}
-							float G = Geo(cam.position, cam.fwdDir, lv.inter.pos, lv.inter.nDir);
+							float G = Geo(cam.position, cam.fwdDir, lv.inter.pos, lv.inter.Ng);
 							Vector3f we = We(lv.inter, cam);
 							contrib = l * bsdf * lv.throughput * G * we * SPP_inv;
 							if (contrib.norm2() == 0) continue;
@@ -817,7 +815,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 #endif
 
 							// connect to camera
-							offsetRayOrig(orig, lv.inter.nDir, rayInside);
+							offsetRayOrig(orig, lv.inter.Ns, rayInside);
 							if (!isShadowRayBlocked(orig, cam.position, g)) {
 								int index = cam.worldPos2PixelIndex(lv.inter.pos);
 #if MULTITHREAD==1
@@ -843,40 +841,38 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 
 						Vector3f connectDir = normalized(ev.inter.pos - lv.inter.pos);
 						Vector3f e_wo = normalized(epverts[t - 2].inter.pos - ev.inter.pos);
-						Vector3f evBSDF = ev.inter.mtlcolor.BxDF(-connectDir, e_wo, ev.inter.nDir, g->eta);
-						//clamp(0, 1, evBSDF);
+						Vector3f evBSDF = ev.inter.mtlcolor.BxDF(-connectDir, e_wo, ev.inter.Ng, ev.inter.Ns, g->eta, false);
 
 						Vector3f lvBSDF;
 						Vector3f l_wo;
 						if (s == 1) {
-							if (connectDir.dot(lv.inter.nDir) >= 0)
+							if (connectDir.dot(lv.inter.Ns) >= 0)
 								lvBSDF = Vector3f(1.f);
 							else lvBSDF = Vector3f(0);
 						}
 						else {
 							l_wo = normalized(lpverts[s - 2].inter.pos - lv.inter.pos);
-							lvBSDF = lv.inter.mtlcolor.BxDF(connectDir, l_wo, lv.inter.nDir, g->eta);
-							//clamp(0, 1, lvBSDF);
+							lvBSDF = lv.inter.mtlcolor.BxDF(connectDir, l_wo, lv.inter.Ng, lv.inter.Ns, g->eta, true);
 						}
 						// connecting 
 						// check if two points are not blocked
 						Vector3f eOrig = ev.inter.pos;
-						bool rayInside = e_wo.dot(ev.inter.nDir) < 0;
-						offsetRayOrig(eOrig, ev.inter.nDir, rayInside);
+						bool rayInside = e_wo.dot(ev.inter.Ns) < 0;
+						offsetRayOrig(eOrig, ev.inter.Ns, rayInside);
 
 						Vector3f lorig = lv.inter.pos;
 						if (s == 1) {
 							lorig = lv.inter.pos;
-							offsetRayOrig(lorig, lv.inter.nDir, false);
+							offsetRayOrig(lorig, lv.inter.Ns, false);
 						}
 						else {
-							rayInside = l_wo.dot(lv.inter.nDir) < 0;
-							offsetRayOrig(lorig, lv.inter.nDir, rayInside);
+							rayInside = l_wo.dot(lv.inter.Ns) < 0;
+							offsetRayOrig(lorig, lv.inter.Ns, rayInside);
 						}
 						if (isShadowRayBlocked(eOrig, lorig, g))
 							continue;
 
-						float G = Geo(ev.inter.pos, ev.inter.nDir, lv.inter.pos, lv.inter.nDir);
+						float G = Geo(ev.inter.pos, ev.inter.Ng, lv.inter.pos, lv.inter.Ng);
 						// unweighted contribution
 						contrib = we * ev.throughput * evBSDF * G * lv.throughput * lvBSDF * l;
 						if (contrib.norm2() == 0) continue;
@@ -887,7 +883,6 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 						misw = CHECK_MIS ? misw : 1;
 #endif
 						estimate += misw * contrib;
-						//cam.FrameBuffer.addRGB(x + y * cam.width, misw * contrib);
 					}
 				}
 			}

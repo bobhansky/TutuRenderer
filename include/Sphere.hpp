@@ -52,15 +52,16 @@ public:
 				inter.obj = this;
 				inter.mtlcolor = this->mtlcolor;
 				inter.pos = orig + inter.t * dir;
-				inter.nDir = normalized(inter.pos - centerPos);
+				inter.Ng = normalized(inter.pos - centerPos);
+				inter.Ns = inter.Ng;
 				if (isTextureActivated)
 				{
 					// calculate the uv coordinate of this intersection
 					float u, v;
-					float phi = acos(inter.nDir.z);
+					float phi = acos(inter.Ng.z);
 					v = phi / M_PI;
 
-					float theta = atan2(inter.nDir.y, inter.nDir.x);	// return [-pi, pi]
+					float theta = atan2(inter.Ng.y, inter.Ng.x);	// return [-pi, pi]
 					// we need to map it to [0, 1]
 					if (theta < 0) theta += 2 * M_PI;	// trigonometric functions are periodic
 					u = (theta / (2.f * M_PI));			// 0 + [0, 1]    then if theta == 0, it is the left most point in width
@@ -96,15 +97,16 @@ public:
 			inter.obj = this;
 			inter.mtlcolor = this->mtlcolor;
 			inter.pos = orig + inter.t * dir;
-			inter.nDir = normalized(inter.pos - centerPos);
+			inter.Ng = normalized(inter.pos - centerPos);
+			inter.Ns = inter.Ng;
 			if (isTextureActivated)
 			{
 				// calculate the uv coordinate of this intersection
 				float u, v;
-				float phi = acos(inter.nDir.z);	// return [0, pi]
+				float phi = acos(inter.Ng.z);	// return [0, pi]
 				v = phi / M_PI;
 
-				float theta = atan2(inter.nDir.y, inter.nDir.x);	// return [-pi, pi]
+				float theta = atan2(inter.Ng.y, inter.Ng.x);	// return [-pi, pi]
 				// we need to map it to [0, 1]
 				if (theta < 0) theta += 2 * M_PI;	// trigonometric functions are periodic
 				u = (theta / (2.f * M_PI));			// 0 + [0, 1]    then if theta == 0, it is the left most point in width
@@ -149,7 +151,8 @@ public:
 		inter.pos.y = centerPos.y + radius * sin(theta) * sin(phi);
 		inter.pos.z = centerPos.z + radius * cos(phi);
 
-		inter.nDir = normalized(inter.pos - centerPos);
+		inter.Ng = normalized(inter.pos - centerPos);
+		inter.Ns = inter.Ng;
 
 		inter.intersected = true;
 		inter.mtlcolor = mtlcolor;
