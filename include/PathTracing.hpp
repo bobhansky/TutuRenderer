@@ -50,18 +50,18 @@ public:
 	Vector3f calcForMirror(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth) {
 		if (depth > MAX_DEPTH) return 0;	// 2 mirror reflect forever causing stack overflow
 		Vector3f wi;
-		inter.mtlcolor.sampleDirection(normalized(-dir), inter.nDir, wi);
+		inter.mtlcolor.sampleDirection(normalized(-dir), inter.Ns, wi);
 
 		wi = normalized(wi);
 
 		Intersection x_inter;
-		Vector3f rayOrig = inter.pos + inter.nDir * EPSILON;
+		Vector3f rayOrig = inter.pos + inter.Ns * EPSILON;
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		if (x_inter.intersected) {
-			float cos = inter.nDir.dot(wi);
+			float cos = inter.Ng.dot(wi);
 			Vector3f wo = -dir;
-			float pdf = inter.mtlcolor.pdf(wo, wi, inter.nDir);
-			Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
+			float pdf = inter.mtlcolor.pdf(wo, wi, inter.Ns);
+			Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.Ng, inter.Ns, g->eta);
 
 			Vector3f res = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 			return res * f_r * cos / pdf;
@@ -85,46 +85,48 @@ public:
 			records[thdID].append("\nOrigin " + origin.toString() + ", dir " + dir.toString());
 #endif
 
-		Vector3f N = inter.nDir;
+		Vector3f Ng = inter.Ng;
+		Vector3f Ns = inter.Ns;
 
 		Vector3f wo = -dir;
 		float eta_i = g->eta;
 		float eta_t = inter.mtlcolor.eta;
 
 		Vector3f wi;
-		auto [sampleSuccess, TIR] = inter.mtlcolor.sampleDirection(wo, N, wi, eta_i);
+		auto [sampleSuccess, TIR] = inter.mtlcolor.sampleDirection(wo, inter.Ns, wi, eta_i);
 		wi = normalized(wi);
-		float pdf = inter.mtlcolor.pdf(wi, wo, N, eta_i, eta_t);
+		float pdf = inter.mtlcolor.pdf(wi, wo, inter.Ns, eta_i, eta_t);
 
 		// total internal reflection
 		if (TIR) {
-			wi = normalized(getReflectionDir(wo, N));
+			wi = normalized(getReflectionDir(wo, Ns));
 			pdf = 1;
 			if (inter.mtlcolor.mType == MICROFACET_T) {
-				Vector3f interN = N;
-				if (wo.dot(N) < 0) {
-					interN = -N;
+				Vector3f interNg = Ng;
+				Vector3f interNs = Ns;
+				if (wo.dot(Ng) < 0) {
+					interNg = -interNg;
 					std::swap(eta_i, eta_t);
+					interNs = -interNs;
 				}
 				Vector3f h = normalized(wo + wi);
-				float F = fresnel(wo, interN, eta_i, eta_t);
-				float cosTheta = interN.dot(h);
-				cosTheta = abs(cosTheta);
+				float F = fresnel(wi, interNs, eta_i, eta_t);
+				float cosTheta = abs(interNs.dot(h));
 				wi = normalized(getReflectionDir(wo, h));
-				pdf = 1 * D_ndf(h, interN, inter.mtlcolor.roughness) * cosTheta / (4.f * wo.dot(h));
+				pdf = 1 * D_ndf(h, interNs, inter.mtlcolor.roughness) * cosTheta / (4.f * wo.dot(h));
 			}
 		}
-		Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, N, eta_i, TIR);
+		Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, Ng, Ns, eta_i, false, TIR);
 
 		Vector3f rayOrig = inter.pos;
 		float cos = 0;
-		if (wi.dot(N) > 0) {	
-			rayOrig = rayOrig + N * EPSILON;
-			cos = N.dot(wi);
+		if (wi.dot(Ns) > 0) {	
+			rayOrig = rayOrig + Ns * EPSILON;
+			cos = abs(Ng.dot(wi));
 		}
 		else {	
-			rayOrig = rayOrig - N * EPSILON;
-			cos = (-N).dot(wi);
+			rayOrig = rayOrig - Ns * EPSILON;
+			cos = abs((-Ng).dot(wi));
 		}
 		Vector3f Li = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 
@@ -167,7 +169,7 @@ public:
 
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
-		if (inter.mtlcolor.hasEmission() && inter.nDir.dot(-dir) > 0)  return inter.mtlcolor.emission;
+		if (inter.mtlcolor.hasEmission() && inter.Ng.dot(-dir) > 0)  return inter.mtlcolor.emission;
 
 		Vector3f wo = -dir;
 
@@ -186,24 +188,24 @@ public:
 		Intersection light_inter;
 		sampleLight(light_inter, light_pdf, g);
 
-		bool rayInside = inter.nDir.dot(wo) < 0;
+		bool rayInside = inter.Ns.dot(wo) < 0;
 		Vector3f shadowRayOrig = inter.pos;
 		Vector3f lightPos = light_inter.pos;
-		offsetRayOrig(shadowRayOrig, inter.nDir, rayInside);
-		offsetRayOrig(lightPos, light_inter.nDir, false);
+		offsetRayOrig(shadowRayOrig, inter.Ns, rayInside);
+		offsetRayOrig(lightPos, light_inter.Ns, false);
 		if (!light_inter.intersected || isShadowRayBlocked(shadowRayOrig, lightPos, g)) {}
 		else {
 			Vector3f wi = light_inter.pos - inter.pos;
 			float r2 = wi.norm2();
 			wi = normalized(wi);
-			if (wi.dot(light_inter.nDir) > 0) {}
+			if (wi.dot(light_inter.Ns) > 0) {}
 			else {
-				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);	// w.r.t solid angle
-				Vector3f light_N = normalized(light_inter.nDir);
+				mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.Ns, g->eta, inter.mtlcolor.eta);	// w.r.t solid angle
+				Vector3f light_N = normalized(light_inter.Ns);
 				float cos_theta_prime = light_N.dot(-wi);
 				if (cos_theta_prime <= 0) goto jmp;
-				float dot = inter.nDir.dot(wi);
-				float cos_theta = dot < 0 ? 0 : dot;
+				float dot = inter.Ng.dot(wi);
+				float cos_theta = abs(dot);
 				// transform the pdfs to the same space: solid angle space
 				// pdf_m / pdf_l = dA / dw
 				// dw = dA * cos_theta_prime / r2
@@ -212,7 +214,7 @@ public:
 				float pdfl = light_pdf;
 				light_pdf = light_pdf * r2 / cos_theta_prime;
 				mis_weight_l = getMisWeight(light_pdf, mat_pdf);
-				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
+				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.Ng, inter.Ns, g->eta);
 				Vector3f L_i = light_inter.mtlcolor.emission;
 				if (r2 * pdfl < MIN_DIVISOR) return sampleValue;
 				sampleValue = sampleValue +
@@ -223,24 +225,24 @@ public:
 		// *********************** Sample BSDF ********************
 	jmp:
 		Vector3f wi;
-		auto [sampleSucess, specialEvent] = inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta);
+		auto [sampleSucess, specialEvent] = inter.mtlcolor.sampleDirection(wo, inter.Ns, wi, g->eta);
 		if (!sampleSucess)
 			return sampleValue;
 
-		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);
+		mat_pdf = inter.mtlcolor.pdf(wi, wo, inter.Ns, g->eta, inter.mtlcolor.eta);
 		Intersection x_inter;
 		Vector3f rayOrig = inter.pos;
-		offsetRayOrig(rayOrig, inter.nDir, wi.dot(inter.nDir) < 0);
+		offsetRayOrig(rayOrig, inter.Ns, wi.dot(inter.Ns) < 0);
 
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		if (!x_inter.intersected) {}
 		else {
-			float dot = abs(inter.nDir.dot(wi));
+			float dot = abs(inter.Ng.dot(wi));
 			float cos_theta = dot;
 
 			light_pdf = getLightPdf(x_inter, g);
 			if (light_pdf) {
-				Vector3f light_N = normalized(x_inter.nDir);
+				Vector3f light_N = normalized(x_inter.Ns);
 				float cos_theta_prime = light_N.dot(-wi);
 				if (cos_theta_prime <= 0)
 					goto jmp2;
@@ -253,7 +255,7 @@ public:
 				mis_weight_m = getMisWeight(mat_pdf, l_pdf_transformed);
 				if (inter.mtlcolor.mType == PERFECT_REFLECTIVE && mat_pdf == 1.f)
 					mis_weight_m = 1.f;
-				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
+				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.Ng, inter.Ns, g->eta);
 				Vector3f L_i = x_inter.mtlcolor.emission;
 
 				if (mat_pdf < MIN_DIVISOR) return sampleValue;
@@ -269,7 +271,7 @@ public:
 				if (getRandomFloat() > rr_prob)
 					return sampleValue;
 
-				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
+				Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.Ng, inter.Ns, g->eta);
 				Vector3f coe = f_r * cos_theta / (mat_pdf * rr_prob);
 				if (mat_pdf * rr_prob < MIN_DIVISOR) return sampleValue;
 				tp = tp * coe;
@@ -281,11 +283,7 @@ public:
 					records[thdID].append("\nDepth " + std::to_string(depth + 1) + "[ret]" + Li.toString());
 #endif
 				sampleValue = sampleValue + (Li * coe);
-			}
-			// 4/30/2024
-			// by experiment it doesnt always equal 1, need to verify in the future
-			// only W1(x_1) + W2(x_1) == 1
-			// std::cout << mis_weight_m << " ";std::cout<<  mis_weight_l << "\n";		
+			}	
 		}
 
 
@@ -452,7 +450,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 623 && y == 745) {
+				if (x == 585 && y == 710) {
 					PRINT = true;
 				}
 

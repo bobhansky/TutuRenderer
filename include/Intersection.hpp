@@ -16,7 +16,8 @@ public:
 	bool intersected = false;
 	float t = FLT_MAX;	// pos = rayPos + t * rayDir
 	Vector3f pos;
-	Vector3f nDir; // normal direction
+	Vector3f Ng; // geometric normal
+	Vector3f Ns;	// shading normal
 
 	Vector2f textPos;	// texture coordinates if any	(-1, -1) means no texture
 	int diffuseIndex = -1;

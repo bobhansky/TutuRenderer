@@ -78,7 +78,7 @@ public:
 					epv.inter = Intersection();
 					epv.inter.pos = eyePos;
 					epv.inter.intersected = true;
-					epv.inter.nDir = cam.fwdDir;
+					epv.inter.Ng = cam.fwdDir;
 					epv.throughput = tp;
 					epverts.emplace_back(epv);
 					float dirPdf = 0;
@@ -93,7 +93,7 @@ public:
 					// the pdf of first point w.r.t area == choose the pixel, the pdf_A = 1/FilmArea,
 					// pdf_w = 1/FilmArea/lensArea * d^2/ camCos
 					// == d^2 / (FilmArea * lensArea* camCos)
-					float wi_n_cos = abs(wi.dot(epverts[0].inter.nDir)); // camCos
+					float wi_n_cos = abs(wi.dot(epverts[0].inter.Ng)); // camCos
 					float d2 = (pixelPos - cam.position).norm2();
 					float pdfCam_w = d2 * cam.lensAreaInv * cam.filmPlaneAreaInv / wi_n_cos;
 					// projected solid angle pdf
@@ -119,27 +119,27 @@ public:
 							break;
 						// sample next inter
 						Vector3f wo = -wi;
-						auto [success, TIR] = ev.inter.mtlcolor.sampleDirection(wo, ev.inter.nDir, wi, g->eta);
+						auto [success, TIR] = ev.inter.mtlcolor.sampleDirection(wo, ev.inter.Ng, wi, g->eta);
 						if (!success) break;
 
 						wi = normalized(wi);
-						dirPdf = ev.inter.mtlcolor.pdf(wi, wo, ev.inter.nDir, g->eta, ev.inter.mtlcolor.eta);
+						dirPdf = ev.inter.mtlcolor.pdf(wi, wo, ev.inter.Ng, g->eta, ev.inter.mtlcolor.eta);
 						if (dirPdf == 0) break;;
 						if (TIR) {
-							wi = normalized(getReflectionDir(wo, ev.inter.nDir));
+							wi = normalized(getReflectionDir(wo, ev.inter.Ng));
 							dirPdf = 1;
 						}
-						float cos = abs(wi.dot(ev.inter.nDir));
+						float cos = abs(wi.dot(ev.inter.Ng));
 						// for next vertex
-						Vector3f bsdf = ev.inter.mtlcolor.BxDF(wi, wo, ev.inter.nDir, g->eta, TIR);
+						Vector3f bsdf = ev.inter.mtlcolor.BxDF(wi, wo, ev.inter.Ng, g->eta, TIR);
 						if (dirPdf < MIN_DIVISOR)
 							break;
 						tp = tp * bsdf * cos / dirPdf;
 
 						// find next inter
 						orig = ev.inter.pos;
-						bool rayInside = ev.inter.nDir.dot(wi) < 0;
-						offsetRayOrig(orig, ev.inter.nDir, rayInside);
+						bool rayInside = ev.inter.Ng.dot(wi) < 0;
+						offsetRayOrig(orig, ev.inter.Ng, rayInside);
 						interStrategy->UpdateInter(nxtInter, g->scene, orig, wi);
 						if (!nxtInter.intersected)
 							break;

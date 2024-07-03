@@ -24,7 +24,7 @@ class BaseInterStrategy : public IIntersectStrategy {
 
 	virtual float getShadowCoeffi(Scene& sce, Intersection& p, Vector3f& lightPos) override{
 		Vector3f orig = p.pos;
-		orig = orig + 0.0005f * p.nDir;
+		orig = orig + 0.0005f * p.Ng;
 		Vector3f raydir = normalized(lightPos - orig);
 		float distance = (lightPos - orig).norm();
 
