@@ -5,11 +5,11 @@
 #include <omp.h>
 #include <thread>;
 
-#define MAX_PATHLENGTH 5		// MAX_PATHLENGTH + 1 vertices in total
+#define MAX_PATHLENGTH 7		// MAX_PATHLENGTH + 1 vertices in total
 #define CHECK 0 			    // check unweighted contribution of one single strategy
 #define S_CHECK 1				// when checking, set MAX_PATHLENGTH to S_CHECK + T_CHECK + 1 for performance
 #define T_CHECK 6
-#define CHECK_MIS 1				// when checking, set it 1 if want MIS res
+#define CHECK_MIS 0			// when checking, set it 1 if want MIS res
 
 std::mutex mutex_color;
 omp_lock_t omp_lock_color;
@@ -701,7 +701,7 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 			Vector3f rayDir;
 			rayDir = normalized(pixelPos - eyePos);
 			Vector3f estimate;
-			if (x == 683 && y == 649)
+			if (x == 725 && y == 709)
 				int a = 0;
 
 			for (int i = 0; i < SPP; i++) {

@@ -20,7 +20,7 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 8;
+int SPP = 1024;
 float SPP_inv = 1.f / SPP;
 
 #define EXPEDITE 1		// BVH to expedite intersection

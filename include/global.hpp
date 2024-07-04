@@ -11,9 +11,9 @@
 
 #include "Vector.hpp"
 
-#define DEBUG 1
+#define DEBUG 0
 #define M_PI 3.1415926535897f
-#define EPSILON 0.05f		// be picky about it, change it to accommodate object size
+#define EPSILON 0.0005f		// be picky about it, change it to accommodate object size
 
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);

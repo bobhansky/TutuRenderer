@@ -2,7 +2,7 @@
 // Integrator: path
 #include "IIntegrator.hpp"
 
-#define MAX_DEPTH 9
+#define MAX_DEPTH 6
 #define MIN_DEPTH 3
 
 class PathTracing;
