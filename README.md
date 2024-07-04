@@ -1,16 +1,27 @@
 
 A CPU based offline Renderer for personal interest and education.
 
+Last Update: 7/4/2024
+
 ## Features
 - Integrator
    - Path Tracing
    - Light Tracing
    - Bidirectional Path Tracing (BDPT)
+        <pre>
+        Stick closely to veach97. Learning and Coding refer a lot to 
+        https://rendering-memo.blogspot.com/2016/03/bidirectional-path-tracing-1-kickoff.html
+         
+        0. No t == 0 case 
+        1. Shading normal asymmetric Bsdf correction ✅
+        2. Some problem with Microfacet Transmissive material (when path length <= 5 is fine) ❌ TODO
+        </pre>
 - Matertial:
    - Lambertain Diffuse (cos weighted)
    - Microfacet Reflection and Transmittance (Cook Torrance Model with GGX distribution).
    - Perfect Reflective
    - Perfect Refractive.
+   - Unlit. (incompatible with bdpt)
 - Sampling
    - Importance Sampling      
    - Multiple Importance Sampling
@@ -27,7 +38,7 @@ A CPU based offline Renderer for personal interest and education.
    - Bloom
    - HDR
    - Tone Mapping / Gamma Correction
-- Russian Roulette (Throughput)
+- Russian Roulette (Throughput) in path tracing
 
 ## Todo List
    - Microfacet refractive/translucent  ✅
@@ -35,13 +46,13 @@ A CPU based offline Renderer for personal interest and education.
    - don't rely on .ppm image file
    - 6/29/2024:
      
-         - bdpt with normal mapping
+         1.better config file
      
-         - better config file
+         2.image based lighting
      
-         - image based lighting
-     
-         - Subsurface scattering   
+         3.Subsurface scattering
+
+         4.SAH BVH
 ## Usage
    <pre>
       $ ./PathTracing.exe config.txt
