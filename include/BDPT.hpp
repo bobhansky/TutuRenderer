@@ -537,7 +537,7 @@ public:
 
 								// connect to camera
 								offsetRayOrig(orig, lv.inter.Ns, rayInside);
-								if (!isShadowRayBlocked(orig, cam.position, g) && wo.dot(cam.fwdDir) < 0) {
+								if (!isShadowRayBlocked(orig, cam.position, g) && wi.dot(cam.fwdDir) < 0) {
 									int index = cam.worldPos2PixelIndex(lv.inter.pos);
 
 #if CHECK
@@ -816,9 +816,8 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 
 							// connect to camera
 							offsetRayOrig(orig, lv.inter.Ns, rayInside);
-							if (!isShadowRayBlocked(orig, cam.position, g) && wo.dot(cam.fwdDir) < 0) {
+							if (!isShadowRayBlocked(orig, cam.position, g) && wi.dot(cam.fwdDir) < 0) {
 								int index = cam.worldPos2PixelIndex(lv.inter.pos);
-
 #if MULTITHREAD==1
 								mutex_color.lock();
 								cam.FrameBuffer.addRGB(index, misw * contrib);
