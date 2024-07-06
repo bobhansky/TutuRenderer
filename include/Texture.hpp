@@ -17,6 +17,13 @@ public:
 		if (width == 0 && height == 0) {
 			return Vector3f();
 		}
+		if (u > 0)
+			u = u - (int)u;
+		else u = 1 - (abs(u) - (int)abs(u));
+
+		if (v > 0)
+			v = v - (int)v;
+		else v = 1 - (abs(v) - (int)abs(v));
 
 		int x = u * width;
 		int y = v * height;
