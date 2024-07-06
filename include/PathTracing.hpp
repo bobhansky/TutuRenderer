@@ -188,7 +188,7 @@ public:
 		Intersection light_inter;
 		sampleLight(light_inter, light_pdf, g);
 
-		bool rayInside = inter.Ns.dot(wo) < 0;
+		bool rayInside = inter.Ng.dot(wo) < 0;
 		Vector3f shadowRayOrig = inter.pos;
 		Vector3f lightPos = light_inter.pos;
 		offsetRayOrig(shadowRayOrig, inter.Ns, rayInside);
@@ -450,7 +450,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 585 && y == 710) {
+				if (x == 399 && y == 488) {
 					PRINT = true;
 				}
 
