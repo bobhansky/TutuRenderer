@@ -17,6 +17,7 @@ public:
 		if (width == 0 && height == 0) {
 			return Vector3f();
 		}
+
 		if (u > 0)
 			u = u - (int)u;
 		else u = 1 - (abs(u) - (int)abs(u));
