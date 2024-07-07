@@ -1088,6 +1088,7 @@ public:
 		temptext->height = height;
 
 		input >> b0;	// for 255
+		float max = std::stoi(b0);
 		// read data
 		for (int j = 0; j < height; j++) {
 			for (int i = 0; i < width; i++) {
@@ -1097,7 +1098,7 @@ public:
 				r = std::stoi(b0);
 				g = std::stoi(b1);
 				b = std::stoi(b2);
-				temptext->rgb.emplace_back(Vector3f (r/255.f, g/255.f, b/255.f));
+				temptext->rgb.emplace_back(Vector3f (r/max, g/max, b/max));
 			}
 		}
 		input.clear();
