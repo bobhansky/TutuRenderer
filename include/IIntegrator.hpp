@@ -36,7 +36,8 @@ void changeNormalDir(Intersection& inter, PPMGenerator* g) {
 
 		Vector3f e1 = t->v1 - t->v0;
 		Vector3f e2 = t->v2 - t->v0;
-		Vector3f nDir = crossProduct(e1, e2); // note the order!
+		// Vector3f nDir = crossProduct(e1, e2); // flat shading
+		Vector3f nDir = inter.Ns;	// smooth shading
 		nDir = normalized(nDir);
 
 		float deltaU1 = t->uv1.x - t->uv0.x;

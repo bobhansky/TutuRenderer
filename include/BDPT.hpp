@@ -701,8 +701,8 @@ void sub_render_bdpt(Thread_arg_bdpt* a, int threadID, int s, int e) {
 			Vector3f rayDir;
 			rayDir = normalized(pixelPos - eyePos);
 			Vector3f estimate;
-			if (x == 725 && y == 709)
-				int a = 0;
+			//if (x == 725 && y == 709)
+			//	int a = 0;
 
 			for (int i = 0; i < SPP; i++) {
 				std::vector<bdpt::eyePathVert> epverts;
