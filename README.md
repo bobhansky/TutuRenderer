@@ -2,7 +2,7 @@
 A CPU based offline Renderer for personal interest and education.
 
 Last Update: 7/4/2024
-<img src="https://github.com/bobhansky/PathTracing/blob/main/img/broom_spp512.png" width=900 height=506/>
+<img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/broom_spp1024.png" width=900 height=506/>
 
 
 ## Features
