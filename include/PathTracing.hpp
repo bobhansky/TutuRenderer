@@ -450,7 +450,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 585 && y == 710) {
+				if (x == 1187 && y == 545) {
 					PRINT = true;
 				}
 

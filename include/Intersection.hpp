@@ -26,6 +26,9 @@ public:
 	int metallicMapIndex = -1;
 
 
+	float beta, gamma;	// berrycentric coords
+
+
 	Material mtlcolor;
 	Object *obj = nullptr;		// this intersection is on which object	
 

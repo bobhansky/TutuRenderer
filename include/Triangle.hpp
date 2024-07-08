@@ -16,6 +16,8 @@ public:
 	Vector3f n0, n1, n2;
 	Vector2f uv0, uv1, uv2;	// texture coordinate u,v   (-1,-1) initially means no texture 
 
+	Vector3f tan0, tan1, tan2;	// tangent
+
 	// Using Moller Trumbore Algorithm to update the intersection between ray and triangle
 	// solve with Cramer's rule
 	// https://www.geeksforgeeks.org/system-linear-equations-three-variables-using-cramers-rule/#
@@ -55,6 +57,9 @@ public:
 			inter.mtlcolor = this->mtlcolor;
 			inter.Ns = normalized((n0 * (1 - res.y - res.z)) + n1 * res.y + n2 * res.z);	// smooth shading
 			inter.Ng = normal;
+
+			inter.beta = res.y;
+			inter.gamma = res.z;
 
 			// inter.nDir = normalized(crossProduct(E1, E2));	// flat shading
 

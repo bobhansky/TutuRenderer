@@ -16,6 +16,10 @@
 #include <fstream>
 #include <math.h>
 
+#include "global.hpp"
+
+
+
 // Print progress to console while loading (large models)
 #define OBJL_CONSOLE_OUTPUT
 
@@ -129,6 +133,21 @@ namespace objl
         float Z;
     };
 
+
+    // bobhansky, 7/7/2024
+    struct Vec4f {
+        Vec4f() {
+
+        }
+        Vec4f(float a, float b, float c, float d): x(a), y(b), z(c), w(d){
+        }
+
+        float x;
+        float y;
+        float z;
+        float w;
+    };
+
     // Structure: Vertex
     //
     // Description: Model Vertex object that holds
@@ -143,6 +162,9 @@ namespace objl
 
         // Texture Coordinate Vector
         Vector2 TextureCoordinate;
+
+        // bobhansky, tangent vector
+        Vector3 Tangent;
     };
 
     struct Material
@@ -406,10 +428,74 @@ namespace objl
     }
 
     // Class: Loader
-    //
+    // 7/7/2024, failed
     // Description: The OBJ Model Loader
     class Loader
     {
+    public:
+        // medium class for using interface SmikkTspace
+        class TangentHelper {
+        public:
+            SMikkTSpaceInterface stInterface;
+            SMikkTSpaceContext stContext;
+
+            inline int static getNfaces(const SMikkTSpaceContext* pContext) {
+                objl::Loader* t = static_cast<objl::Loader*> (pContext->m_pUserData);
+                return t->LoadedVertices.size()/3;
+            }
+
+            inline int static getNvertsOfFace(const SMikkTSpaceContext* pContext, const int iFace) {
+                return 3;
+            }
+
+            void static getPos(const SMikkTSpaceContext* pContext, float fvPosOut[], const int iFace, const int iVert) {
+                objl::Loader* t = static_cast<objl::Loader*> (pContext->m_pUserData);
+                objl::Vertex vert = t->LoadedVertices.at(iFace * 3 + iVert);
+                fvPosOut[0] = vert.Position.X;
+                fvPosOut[1] = vert.Position.Y;
+                fvPosOut[2] = vert.Position.Z;
+            }
+
+            void static getNormal(const SMikkTSpaceContext* pContext, float fvNormOut[], const int iFace, const int iVert) {
+                objl::Loader* t = static_cast<objl::Loader*> (pContext->m_pUserData);
+                objl::Vertex vert = t->LoadedVertices.at(iFace * 3 + iVert);
+                fvNormOut[0] = vert.Normal.X;
+                fvNormOut[1] = vert.Normal.Y;
+                fvNormOut[2] = vert.Normal.Z;
+            }
+
+            void static m_getTexCoord(const SMikkTSpaceContext* pContext, float fvTexcOut[], const int iFace, const int iVert) {
+                objl::Loader* t = static_cast<objl::Loader*> (pContext->m_pUserData);
+                objl::Vertex vert = t->LoadedVertices.at(iFace * 3 + iVert);
+                fvTexcOut[0] = vert.TextureCoordinate.X;
+                fvTexcOut[1] = vert.TextureCoordinate.Y;
+            }
+
+            void static setTSpaceBasic(const SMikkTSpaceContext* pContext,
+                const float fvTangent[], const float fSign, const int iFace, const int iVert) {
+                objl::Loader* t = static_cast<objl::Loader*> (pContext->m_pUserData);
+                objl::Vector3& tangent = t->LoadedVertices.at(iFace * 3 + iVert).Tangent;
+                tangent.X = fvTangent[0];
+                tangent.Y = fvTangent[1];
+                tangent.Z = fvTangent[2];
+            }
+
+            TangentHelper(objl::Loader* l) {
+                stInterface.m_getNormal = getNormal;
+                stInterface.m_getNumFaces = getNfaces;
+                stInterface.m_getNumVerticesOfFace = getNvertsOfFace;
+                stInterface.m_getPosition = getPos;
+                stInterface.m_getTexCoord = m_getTexCoord;
+                stInterface.m_setTSpaceBasic = setTSpaceBasic;
+                stInterface.m_setTSpace = nullptr;
+
+                stContext.m_pInterface = &stInterface;
+                stContext.m_pUserData = l;
+            }
+
+        };
+
+
     public:
         // Default Constructor
         Loader()
@@ -700,6 +786,9 @@ namespace objl
                     }
                 }
             }
+            // bobhansky, 7/7/2024
+            TangentHelper tanHelp(this);
+            genTangSpaceDefault(&tanHelp.stContext);
 
             if (LoadedMeshes.empty() && LoadedVertices.empty() && LoadedIndices.empty())
             {
@@ -709,6 +798,7 @@ namespace objl
             {
                 return true;
             }
+
         }
 
         // Loaded Mesh Objects
@@ -1168,4 +1258,6 @@ namespace objl
         }
     };
 }
+
+
 

@@ -10,10 +10,13 @@
 #include <mutex>
 
 #include "Vector.hpp"
+#include "mikktspace.h"
+#include "OBJ_Loader.h"
 
 #define DEBUG 0
 #define M_PI 3.1415926535897f
 #define EPSILON 0.0005f		// be picky about it, change it to accommodate object size
+
 
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);
@@ -391,3 +394,4 @@ Vector3f SphereLocal2world(const Vector3f& n, const Vector3f& dir) {
 
 	return normalized(dir.x * S + dir.y * T + dir.z * N);
 }
+

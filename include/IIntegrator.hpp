@@ -8,7 +8,7 @@
 #include "PPMGenerator.hpp"
 #include "IIntersectStrategy.h"
 
-
+#define SMOOTH_SHADING 1		// try to smooth but failed 7/7/2024
 
 std::mutex sampleLight_mutex;
 omp_lock_t light_lock_omp;
@@ -31,6 +31,7 @@ void changeNormalDir(Intersection& inter, PPMGenerator* g) {
 	switch (inter.obj->objectType)
 	{
 	case TRIANGLE: {
+		// 7/7/2024 for smooth shading, also need to interpolate Tangent, todo
 		Triangle* t = static_cast<Triangle*>(inter.obj);
 		// our triangle start from lower left corner and go counterclockwise
 
@@ -48,10 +49,23 @@ void changeNormalDir(Intersection& inter, PPMGenerator* g) {
 
 		float coef = 1 / (-deltaU1 * deltaV2 + deltaV1 * deltaU2);
 
-		Vector3f T = coef * (-deltaV2 * e1 + deltaV1 * e2);
-		Vector3f B = coef * (-deltaU2 * e1 + deltaU1 * e2);
+		Vector3f T;
+		Vector3f B;
+#if SMOOTH_SHADING
+		T = t->tan0 * (1 - inter.beta - inter.gamma) + t->tan1 * inter.beta + t->tan2 * inter.gamma;
 		T = normalized(T);
+		B = crossProduct(nDir, T);
 		B = normalized(B);
+#else 
+		T = coef * (-deltaV2 * e1 + deltaV1 * e2);
+		B = coef * (-deltaU2 * e1 + deltaU1 * e2);
+
+		// Gram-Schmidt
+		T = T - T.dot(nDir) * nDir;
+		T = normalized(T);
+		B = B - B.dot(nDir) * nDir - T.dot(B) * T;
+		B = normalized(B);
+#endif
 
 		Vector3f res;
 		res.x = T.x * color.x + B.x * color.y + nDir.x * color.z;

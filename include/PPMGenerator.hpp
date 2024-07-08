@@ -13,6 +13,7 @@
 #include "Scene.hpp"
 #include "Sphere.hpp"
 #include "Triangle.hpp"
+
 #include "Material.hpp"
 #include "Texture.hpp"
 #include "OBJ_Loader.h"
@@ -20,11 +21,11 @@
 
 
 bool PRINT = false;			// debug helper
-int SPP = 16;
+int SPP = 1;
 float SPP_inv = 1.f / SPP;
 
 #define EXPEDITE 1		// BVH to expedite intersection
-#define MULTITHREAD	1	// multi threads to expedite, 0 for none, 1 for std::thread, 2 for openmp
+#define MULTITHREAD	0	// multi threads to expedite, 0 for none, 1 for std::thread, 2 for openmp
 #define N_THREAD 20
 #define MIS	1			// Multiple Importance Sampling
 #define MIN_DIVISOR 0.04f
@@ -187,31 +188,34 @@ public:
 	void loadObj(objl::Loader& loader, Material& mtlcolor, int textureIndex = -1, 
 		int bumpMapIndex= -1, int roughnessIndex = -1, int metallicIndex = -1) {
 
-		for (auto m : loader.LoadedMeshes) {
-			for (int i = 0; i < m.Vertices.size(); i += 3) {
+		//for (auto m : loader.LoadedMeshes) {
+			for (int i = 0; i < loader.LoadedVertices.size(); i += 3) {
 				// each triangle
 				std::unique_ptr<Triangle> t = std::make_unique<Triangle>();
 
 				for (int j = 0; j < 3; j++) {
 					t->objectType = OBJTYPE::TRIANGLE;
-					objl::Vertex v = m.Vertices[i+j];
+					objl::Vertex v = loader.LoadedVertices[i+j];
 
 					if (j == 0) {
 						t->v0 = Vector3f(v.Position.X, v.Position.Y, v.Position.Z);
 						t->n0 = Vector3f(v.Normal.X, v.Normal.Y, v.Normal.Z);
 						t->uv0 = Vector2f(v.TextureCoordinate.X, v.TextureCoordinate.Y);
+						t->tan0 = Vector3f(v.Tangent.X, v.Tangent.Y, v.Tangent.Z);
 					}
 
 					else if (j == 1) {
 						t->v1 = Vector3f(v.Position.X, v.Position.Y, v.Position.Z);
 						t->n1 = Vector3f(v.Normal.X, v.Normal.Y, v.Normal.Z);
 						t->uv1 = Vector2f(v.TextureCoordinate.X, v.TextureCoordinate.Y);
+						t->tan1 = Vector3f(v.Tangent.X, v.Tangent.Y, v.Tangent.Z);
 					}
 
 					else if (j == 2) {
 						t->v2 = Vector3f(v.Position.X, v.Position.Y, v.Position.Z);
 						t->n2 = Vector3f(v.Normal.X, v.Normal.Y, v.Normal.Z);
 						t->uv2 = Vector2f(v.TextureCoordinate.X, v.TextureCoordinate.Y);
+						t->tan2 = Vector3f(v.Tangent.X, v.Tangent.Y, v.Tangent.Z);
 					}
 				}
 				t->mtlcolor = mtlcolor;
@@ -226,30 +230,30 @@ public:
 				scene.add(std::move(t));
 			}
 			std::cout << "object loaded sucessfully\n";
-		}
+		//}
 		
 	}
 
 	void transObj(objl::Loader& loader, float xOff, float yOff, float zOff) {
-		for (auto &m : loader.LoadedMeshes) {
-			for (int i = 0; i < m.Vertices.size(); i ++) {
+		//for (auto &m : loader.LoadedMeshes) {
+			for (int i = 0; i < loader.LoadedVertices.size(); i ++) {
 				// each triangle
-				m.Vertices[i].Position.X += xOff;
-				m.Vertices[i].Position.Y += yOff;
-				m.Vertices[i].Position.Z += zOff;
+				loader.LoadedVertices[i].Position.X += xOff;
+				loader.LoadedVertices[i].Position.Y += yOff;
+				loader.LoadedVertices[i].Position.Z += zOff;
 			}
-		}
+		//}
 	}
 
 	void scaleObj(objl::Loader& loader, float xScale, float yScale, float zScale) {
-		for (auto &m : loader.LoadedMeshes) {
-			for (int i = 0; i < m.Vertices.size(); i ++) {
+		//for (auto &m : loader.LoadedMeshes) {
+			for (int i = 0; i < loader.LoadedVertices.size(); i ++) {
 				// each triangle
-				m.Vertices[i].Position.X *= xScale;
-				m.Vertices[i].Position.Y *= yScale;
-				m.Vertices[i].Position.Z *= zScale;
+				loader.LoadedVertices[i].Position.X *= xScale;
+				loader.LoadedVertices[i].Position.Y *= yScale;
+				loader.LoadedVertices[i].Position.Z *= zScale;
 			}
-		}
+		//}
 	}
 
 	// in degree
@@ -258,38 +262,38 @@ public:
 		if (degree == 0) return;
 
 		float rad = degree2Radians(degree);
-		for (auto& m : loader.LoadedMeshes) {
-			for (int i = 0; i < m.Vertices.size(); i++) {
+		//for (auto& m : loader.LoadedMeshes) {
+			for (int i = 0; i < loader.LoadedVertices.size(); i++) {
 				// each triangle
-				float X = m.Vertices[i].Position.X;
-				float Y = m.Vertices[i].Position.Y;
-				float Z = m.Vertices[i].Position.Z;
+				float X = loader.LoadedVertices[i].Position.X;
+				float Y = loader.LoadedVertices[i].Position.Y;
+				float Z = loader.LoadedVertices[i].Position.Z;
 
-				float NX = m.Vertices[i].Normal.X;
-				float NY = m.Vertices[i].Normal.Y;
-				float NZ = m.Vertices[i].Normal.Z;
+				float NX = loader.LoadedVertices[i].Normal.X;
+				float NY = loader.LoadedVertices[i].Normal.Y;
+				float NZ = loader.LoadedVertices[i].Normal.Z;
 
 				if (axis == 0) {
-					m.Vertices[i].Position.Y = cos(rad) * Y - sin(rad) * Z;
-					m.Vertices[i].Position.Z = sin(rad) * Y + cos(rad) * Z;
-					m.Vertices[i].Normal.Y = cos(rad) * NY - sin(rad) * NZ;
-					m.Vertices[i].Normal.Z = sin(rad) * NY + cos(rad) * NZ;
+					loader.LoadedVertices[i].Position.Y = cos(rad) * Y - sin(rad) * Z;
+					loader.LoadedVertices[i].Position.Z = sin(rad) * Y + cos(rad) * Z;
+					loader.LoadedVertices[i].Normal.Y = cos(rad) * NY - sin(rad) * NZ;
+					loader.LoadedVertices[i].Normal.Z = sin(rad) * NY + cos(rad) * NZ;
 				}
 				else if (axis == 1) {
-					m.Vertices[i].Position.X = cos(rad) * X + sin(rad) * Z;
-					m.Vertices[i].Position.Z = -sin(rad) * X + cos(rad) * Z;
-					m.Vertices[i].Normal.X = cos(rad) * NX + sin(rad) * NZ;
-					m.Vertices[i].Normal.Z = -sin(rad) * NX + cos(rad) * NZ;
+					loader.LoadedVertices[i].Position.X = cos(rad) * X + sin(rad) * Z;
+					loader.LoadedVertices[i].Position.Z = -sin(rad) * X + cos(rad) * Z;
+					loader.LoadedVertices[i].Normal.X = cos(rad) * NX + sin(rad) * NZ;
+					loader.LoadedVertices[i].Normal.Z = -sin(rad) * NX + cos(rad) * NZ;
 				}
 				else if (axis == 2) {
-					m.Vertices[i].Position.X = cos(rad) * X - sin(rad) *Y;
-					m.Vertices[i].Position.Y = sin(rad) * X + cos(rad) * Y;
-					m.Vertices[i].Normal.X = cos(rad) * NX - sin(rad) * NY;
-					m.Vertices[i].Normal.Y = sin(rad) * NX + cos(rad) * NY;
+					loader.LoadedVertices[i].Position.X = cos(rad) * X - sin(rad) *Y;
+					loader.LoadedVertices[i].Position.Y = sin(rad) * X + cos(rad) * Y;
+					loader.LoadedVertices[i].Normal.X = cos(rad) * NX - sin(rad) * NY;
+					loader.LoadedVertices[i].Normal.Y = sin(rad) * NX + cos(rad) * NY;
 				}
 
 			}
-		}
+		//}
 	}
 	
 
