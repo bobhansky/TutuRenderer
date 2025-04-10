@@ -11,9 +11,9 @@
 
 #include "Vector.hpp"
 
-#define DEBUG 0
+#define DEBUG 1	// fix random num seeds or not
 #define M_PI 3.1415926535897f
-#define EPSILON 0.0005f		// be picky about it, change it to accommodate object size
+#define EPSILON 0.05f		// be picky about it, change it to accommodate object size
 
 
 // lerp(x,v0,v1) = v0 + x(v1-v0);
@@ -115,7 +115,7 @@ inline float degree2Radians(const float& d) {
 
 // check if two float numbers are equal
 inline bool FLOAT_EQUAL(const float& x, const float& y) {
-	return (fabs(x - y) < 0.00001f);
+	return (fabs(x - y) < 0.0001f);
 }
 
 /// <summary		// ctrl + / 
