@@ -61,6 +61,7 @@ public:
 
 	// takes a PPMGenerator and render its rgb array
 	void render() {
+		g->initializeLights();
 		integrator->integrate(g);
 	}
 

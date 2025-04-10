@@ -181,7 +181,7 @@ bool hasIntersection(BVHNode* node, const Vector3f& rayOrig, const Vector3f& ray
 		node->obj->intersect(rayOrig, rayDir, inter);
 		//if (inter.mtlcolor.hasEmission()) return false;	// do not test with light, 3/3/2024: not good but a hack
 
-		if (inter.intersected && inter.t < dis)
+		if (inter.intersected && inter.t < dis && !FLOAT_EQUAL(inter.t, dis))
 			return true;
 		return false;
 	}

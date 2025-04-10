@@ -302,21 +302,21 @@ public:
 		if (!light_inter.intersected) {}
 		else {
 			// test if the ray is blocked in the middle 
-			bool rayInside = inter.nDir.dot(wo) < 0;
+			bool rayInside = inter.Ng.dot(wo) < 0;
 			Vector3f shadowRayOrig = inter.pos;
-			offsetRayOrig(shadowRayOrig, inter.nDir, rayInside);
+			offsetRayOrig(shadowRayOrig, inter.Ng, rayInside);
 			if (isShadowRayBlocked(shadowRayOrig, light_inter.pos, g)) {}
 			else {	// ray is not blocked, then calculate the direct illumination
 				Vector3f L_i = light_inter.mtlcolor.emission;
-				Vector3f light_N = normalized(light_inter.nDir);
+				Vector3f light_N = normalized(light_inter.Ng);
 				Vector3f p_to_light = normalized(light_inter.pos - inter.pos);
 				float cos_theta_prime = light_N.dot(-p_to_light);
 				// if light does not illuminate this direction (p_to_light is on the back side of the light)
 				if (cos_theta_prime < 0) {}
 				else {
 					float dis2 = (light_inter.pos - inter.pos).norm2();
-					float cos_theta = p_to_light.dot(inter.nDir);
-					Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.nDir, g->eta);
+					float cos_theta = p_to_light.dot(inter.Ns);
+					Vector3f f_r = inter.mtlcolor.BxDF(p_to_light, wo, inter.Ng, inter.Ns, g->eta);
 
 					dir_illu = L_i * f_r * cos_theta * cos_theta_prime / (dis2 * light_pdf);
 				}
@@ -331,21 +331,21 @@ public:
 
 		// inter point p to another point x
 		Vector3f wi;
-		auto [sampleSucess, TIR] = inter.mtlcolor.sampleDirection(wo, inter.nDir, wi, g->eta);
+		auto [sampleSucess, TIR] = inter.mtlcolor.sampleDirection(wo, inter.Ns, wi, g->eta);
 		if (!sampleSucess)
 			return sampleValue;
 
 		Intersection x_inter;
-		bool rayInside = inter.nDir.dot(wi) < 0;
+		bool rayInside = inter.Ng.dot(wi) < 0;
 		Vector3f rayOrig = inter.pos;
-		offsetRayOrig(rayOrig, inter.nDir, rayInside);
+		offsetRayOrig(rayOrig, inter.Ng, rayInside);
 		interStrategy->UpdateInter(x_inter, g->scene, rayOrig, wi);
 		// calculate only when inter is on a non-emissive object
 		if (x_inter.intersected && !x_inter.mtlcolor.hasEmission()) {
-			float pdf = inter.mtlcolor.pdf(wi, wo, inter.nDir, g->eta, inter.mtlcolor.eta);
-			float cos_theta = abs(inter.nDir.dot(wi));
+			float pdf = inter.mtlcolor.pdf(wi, wo, inter.Ns, g->eta, inter.mtlcolor.eta);
+			float cos_theta = abs(inter.Ns.dot(wi));
 
-			Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.nDir, g->eta);
+			Vector3f f_r = inter.mtlcolor.BxDF(wi, wo, inter.Ng, inter.Ns, g->eta);
 			Vector3f coe = f_r * cos_theta / (pdf * rr_prob);
 			tp = tp * coe;
 			if (pdf * rr_prob < MIN_DIVISOR) return sampleValue + dir_illu;
@@ -450,7 +450,7 @@ public:
 			Vector3f v_off = y * delta_v;
 			//PRINT = false;
 			for (int x = 0; x < g->width; x++) {
-				if (x == 585 && y == 710) {
+				if (x == 433 && y == 387) {
 					PRINT = true;
 				}
 
