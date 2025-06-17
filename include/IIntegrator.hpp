@@ -25,7 +25,7 @@ public:
 
 
 void changeNormalDir(Intersection& inter, PPMGenerator* g) {
-	Texture* nMap = g->normalMaps.at(inter.normalMapIndex);
+	Texture* nMap = g->normalMaps.at(inter.normalMapIndex); 
 	Vector3f color = nMap->getRGBat(inter.textPos.x, inter.textPos.y);
 
 	switch (inter.obj->objectType)
@@ -34,8 +34,10 @@ void changeNormalDir(Intersection& inter, PPMGenerator* g) {
 		Triangle* t = static_cast<Triangle*>(inter.obj);
 		// our triangle start from lower left corner and go counterclockwise
 
+		// 2025/6/5   seems to be wrong for e1  and e2 according to 
+		// https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 		Vector3f e1 = t->v1 - t->v0;
-		Vector3f e2 = t->v2 - t->v0;
+		Vector3f e2 = t->v2 - t->v0;	// v2-v1?
 		// Vector3f nDir = crossProduct(e1, e2); // flat shading
 		Vector3f nDir = inter.Ns;	// smooth shading
 		nDir = normalized(nDir);
