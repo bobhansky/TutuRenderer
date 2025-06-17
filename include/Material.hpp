@@ -206,6 +206,7 @@ public:
 			
 			// https://zhuanlan.zhihu.com/p/78146875
 			// https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
+			// https://www.tobias-franke.eu/log/2014/03/30/notes_on_importance_sampling.html
 			float r0 = getRandomFloat();
 			float r1 = getRandomFloat();
 			float alhpa = roughness * roughness;
@@ -213,10 +214,11 @@ public:
 			float a2 = alhpa * alpha;
 			
 			float phi = 2 * M_PI * r1;
-			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
+			float costheta = sqrt((1 - r0) / (r0 * (a2 - 1) + 1));
+			float sintheta = sqrt(1 - costheta * costheta);
 
-			float r = std::sin(theta);
-			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
+			float r = sintheta;
+			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), costheta));
 			Vector3f res = getReflectionDir(wo, SphereLocal2world(N, h));
 			res = normalized(res);
 			if (res.dot(N) <= 0)	// actually handled in shadow masking term, but only for specular term
@@ -234,10 +236,11 @@ public:
 			float a2 = a * a;
 
 			float phi = 2 * M_PI * r1;
-			float theta = std::acos(sqrt((1 - r0) / (r0 * (a2 - 1) + 1)));
+			float costheta = sqrt((1 - r0) / (r0 * (a2 - 1) + 1));
+			float sintheta = sqrt(1 - costheta * costheta);
 
-			float r = std::sin(theta);
-			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), std::cos(theta)));
+			float r = sintheta;
+			Vector3f h = normalized(Vector3f(r * std::cos(phi), r * std::sin(phi), costheta));
 			float eta_t = eta;
 			Vector3f interN = N;
 			if (wo.dot(N) < 0) {

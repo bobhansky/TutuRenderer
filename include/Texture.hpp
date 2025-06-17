@@ -4,7 +4,9 @@
 
 #include <vector>
 
-
+// 6/13/2025:
+// should apply inverse gamma correction to transform diffuse color from
+// sRGB space to linear space. I should have a texture type check in the future
 class Texture {
 public:
 	std::string name;
