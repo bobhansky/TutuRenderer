@@ -80,10 +80,7 @@ public:
 	Vector3f calcForRefractive(const Vector3f& origin, const Vector3f& dir, Intersection& inter, int depth,
 		int thdID = -1, bool recording = false) {
 		if (depth > MAX_DEPTH) return 0;
-#if RECORD
-		if (recording)
-			records[thdID].append("\nOrigin " + origin.toString() + ", dir " + dir.toString());
-#endif
+
 
 		Vector3f Ng = inter.Ng;
 		Vector3f Ns = inter.Ns;
@@ -130,10 +127,7 @@ public:
 		}
 		Vector3f Li = traceRay(rayOrig, wi, depth + 1, Vector3f(1));
 
-#if RECORD
-		if (recording)
-			records[thdID].append("\nDepth " + std::to_string(depth + 1) + "[ret]" + Li.toString());
-#endif
+
 		if (pdf < MIN_DIVISOR)
 			return 0;
 		return Li * cos * f_r / pdf;
@@ -142,12 +136,7 @@ public:
 	Vector3f traceRay(const Vector3f& origin, const Vector3f& dir, int depth, Vector3f tp,
 		Intersection* nxtInter = nullptr, int thdID = -1, bool recording = false) {
 
-#if RECORD
-		if (recording) {
-			records[thdID].append("\n***Depth=" + std::to_string(depth) + ": Orig" + origin.toString()
-				+ ", " + "Dir" + dir.toString());
-		}
-#endif
+
 		if (depth > MAX_DEPTH) return 0;
 
 		Vector3f sampleValue = 0;
@@ -278,10 +267,6 @@ public:
 
 				Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp, &x_inter, thdID, recording);
 
-#if RECORD
-				if (recording)
-					records[thdID].append("\nDepth " + std::to_string(depth + 1) + "[ret]" + Li.toString());
-#endif
 				sampleValue = sampleValue + (Li * coe);
 			}	
 		}

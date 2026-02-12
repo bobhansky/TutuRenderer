@@ -1,7 +1,7 @@
-imsize 1024 1024
-eye -0.5 0 4
-viewdir 0 0 -1
-hfov 65
+imsize 800 600
+eye -0.5 0 7.6
+viewdir -0.005 0 -1
+hfov 40
 updir 0 1 0
 bkgcolor 0 0 0 1.0
-integrator path
+integrator bdpt

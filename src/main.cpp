@@ -9,6 +9,7 @@
 #include <string>
 #include <chrono>
 
+// use EPSILON 0.0005f   in global
 
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
@@ -23,7 +24,7 @@ int main(int argc, char* argv[]) {
 	Material roomMtl;
 	roomMtl.mType = LAMBERTIAN;
 	roomMtl.diffuse = { 0.725f, 0.71f, 0.68f };
-	
+
 	objl::Loader room;
 	if (room.LoadFile("../model/veach_bdpt/veach_room.obj")) {
 		g.loadObj(room, roomMtl);
@@ -31,11 +32,22 @@ int main(int argc, char* argv[]) {
 
 	Material LlightMtl;
 	LlightMtl.diffuse = { 0.725f, 0.71f, 0.68f };
-	LlightMtl.emission = { 500.0, 500.0, 500.0 };
+	LlightMtl.emission = { 500.0 , 500.0 , 500.0 };
+	LlightMtl.emission = LlightMtl.emission * 0.5;
 
 	objl::Loader Llight;
 	if (Llight.LoadFile("../model/veach_bdpt/veach_Llight.obj")) {
 		g.loadObj(Llight, LlightMtl);
+	}
+
+	Material sLlightMtl;
+	sLlightMtl.diffuse = { 0.725f, 0.71f, 0.68f };
+	sLlightMtl.emission = { 6999.999881f, 5450.000167f, 3630.000055f} ;
+	sLlightMtl.emission = sLlightMtl.emission * 0.5;
+
+	objl::Loader slight;
+	if (slight.LoadFile("../model/veach_bdpt/veach_slight.obj")) {
+		g.loadObj(slight, sLlightMtl);
 	}
 
 	Material tableMtl;
@@ -74,16 +86,6 @@ int main(int argc, char* argv[]) {
 	}
 
 
-	Material sLlightMtl;
-	sLlightMtl.diffuse = { 0.725f, 0.71f, 0.68f };
-	sLlightMtl.emission = { 6999.999881f, 5450.000167f, 3630.000055f };
-
-	objl::Loader slight;
-	if (slight.LoadFile("../model/veach_bdpt/veach_slight.obj")) {
-		g.loadObj(slight, sLlightMtl);
-	}
-
-	
 	Renderer r(&g);
 	auto start = std::chrono::system_clock::now();		// #include <chrono>
 	r.render();
