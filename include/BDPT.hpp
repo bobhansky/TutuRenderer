@@ -465,8 +465,8 @@ public:
 					ev.inter = eVert2;
 					ev.throughput = tp;
 
-					//epverts.emplace_back(ev);
-					//buildEyePath(epverts);
+					epverts.emplace_back(ev);
+					buildEyePath(epverts);
 					buildLightPath(lpverts);
 
 

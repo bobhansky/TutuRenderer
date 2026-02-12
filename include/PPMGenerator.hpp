@@ -19,30 +19,7 @@
 #include "Camera.hpp"
 
 
-bool PRINT = false;			// debug helper
-int SPP = 16;
-float SPP_inv = 1.f / SPP;
 
-#define EXPEDITE 1		// BVH to expedite intersection
-#define MULTITHREAD	1	// multi threads to expedite, 0 for none, 1 for std::thread, 2 for openmp
-#define N_THREAD 20
-#define MIS	1			// Multiple Importance Sampling
-#define MIN_DIVISOR 0.04f
-
-// these are used for debugging: saving ray info to disk
-// if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
-// RECORD is only for std::treads multithreading
-#define RECORD 0		
-#define RECORD_MIN_X 623
-#define RECORD_MAX_X 624
-#define RECORD_MIN_Y 745
-#define RECORD_MAX_Y 746
-
-#define GAMMA_COORECTION 
-#define GAMMA_VAL 0.78f
-//#define HDR_ONLY	// it would disable HDR_BLOOM
-#define HDR_BLOOM
-//#define BLOOM_ONLY
 
 // sphere vertex face vertex_normal vertex_texture
 std::vector<std::string> objType = { "sphere", "v", "f", "vn", "vt"};

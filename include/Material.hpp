@@ -279,6 +279,8 @@ public:
 			// 3.6 Approximating Distributions
 			// https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#generatingrandomdirections/uniformsamplingahemisphere
 			// https://www.youtube.com/watch?v=rnBbYsysPaU&t=1s
+			//
+			// https://ameye.dev/notes/sampling-the-hemisphere/
 
 			// 1. generate a random direction in sphere coordinate
 			// 2. convert it to world corrdinate
@@ -364,6 +366,8 @@ public:
 			float cosTheta = N.dot(h);
 			cosTheta = std::max(cosTheta, 0.f);
 
+			// 4.f * wo.dot(h) is the jacobian of the transformation from wh to wi
+			// proof: https://www.youtube.com/watch?v=Xi1FZZJ235I
 			return D_ndf(h, N, roughness) * cosTheta / (4.f * wo.dot(h));
 			break;
 		}
