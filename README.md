@@ -110,5 +110,8 @@ lowerleft: NEE only                                      lowerright: NEE + MIS
 
 
 <img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_spp512.png" width=400 height=400/>  <img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_front_spp1024.png" width=600 height=400/> 
+(2/11/2026: above imgs might not be replicated again unless I found these models
+
+The main_veach_bdpt.cpp + config_veach_bdpt.txt produces this today (glad I can have it 95% similar as before): )
 <img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_spp512_2.png" width=600 height=400/> 
 
