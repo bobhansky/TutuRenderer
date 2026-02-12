@@ -1,7 +1,7 @@
 
 A CPU based offline Renderer for personal interest and education.
 
-Last Update: 7/4/2024
+Last Update: 2/11/2026
 <img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/broom_spp1024.png" width=900 height=506/>
 
 
@@ -43,6 +43,7 @@ Last Update: 7/4/2024
 - Russian Roulette (Throughput) in path tracing
 
 ## Todo List
+   - I need to move the things I learned in lajolla to here. (spring 2026)
    - Microfacet refractive/translucent  ✅
    - BDPT ✅
    - don't rely on .ppm image file
@@ -109,4 +110,5 @@ lowerleft: NEE only                                      lowerright: NEE + MIS
 
 
 <img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_spp512.png" width=400 height=400/>  <img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_front_spp1024.png" width=600 height=400/> 
+<img src="https://github.com/bobhansky/TutuRenderer/blob/main/img/veach_bdpt_spp512_2.png" width=600 height=400/> 
 
