@@ -16,7 +16,7 @@
 #define EPSILON 0.0005f		// be picky about it, change it to accommodate object size
 
 bool PRINT = false;			// debug helper
-int SPP = 256;
+int SPP = 64;
 float SPP_inv = 1.f / SPP;
 
 #define EXPEDITE 1		// BVH to expedite intersection
@@ -24,15 +24,6 @@ float SPP_inv = 1.f / SPP;
 #define N_THREAD 20
 #define MIS	1			// Multiple Importance Sampling
 #define MIN_DIVISOR 0.04f
-
-// these are used for debugging: saving ray info to disk
-// if record, use low SPP and MAX_DEPTH, otherwise the data is HUGE
-// RECORD is only for std::treads multithreading
-#define RECORD 0		
-#define RECORD_MIN_X 623
-#define RECORD_MAX_X 624
-#define RECORD_MIN_Y 745
-#define RECORD_MAX_Y 746
 
 
 #define GAMMA_COORECTION 

@@ -149,6 +149,10 @@ public:
 		// if ray has no intersection, return bkgcolor
 		if (!inter.intersected)		return g->bkgcolor;
 
+		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE
+			|| inter.mtlcolor.mType == MICROFACET_T)
+			return calcForRefractive(origin, dir, inter, depth, thdID, recording);
+
 		// TEXTURE
 		if (inter.obj->isTextureActivated)
 			textureModify(inter, g);
@@ -156,15 +160,18 @@ public:
 		// if UNLIT material, return diffuse
 		if (inter.mtlcolor.mType == UNLIT) return inter.mtlcolor.diffuse;
 
+		// indirect light hit emissive object, return 0
+		if (inter.mtlcolor.hasEmission() && depth > 0)
+			return 0;
+
 		// if ray hit emissive object, return the L_o
 		// depth > 0: indirect light, excluded
-		if (inter.mtlcolor.hasEmission() && inter.Ng.dot(-dir) > 0)  return inter.mtlcolor.emission;
+		if (inter.mtlcolor.hasEmission())  
+			return inter.mtlcolor.emission;
+		
 
 		Vector3f wo = -dir;
 
-		if (inter.mtlcolor.mType == PERFECT_REFRACTIVE
-			|| inter.mtlcolor.mType == MICROFACET_T)
-			return calcForRefractive(origin, dir, inter, depth, thdID, recording);
 
 #if MIS
 		// ******************* direct illumination ********************
@@ -265,14 +272,11 @@ public:
 				if (mat_pdf * rr_prob < MIN_DIVISOR) return sampleValue;
 				tp = tp * coe;
 
-				Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp, &x_inter, thdID, recording);
+				Vector3f Li = traceRay(rayOrig, wi, depth + 1, tp, &x_inter, thdID);
 
 				sampleValue = sampleValue + (Li * coe);
 			}	
 		}
-
-
-
 
 #else // Next Event Estimation Only
 		if (inter.mtlcolor.mType == PERFECT_REFLECTIVE)
@@ -401,11 +405,9 @@ public:
 				g,
 				this
 			};
-#if RECORD
-			thds[i] = std::thread(&sub_render_record, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
-#else
+
 			thds[i] = std::thread(sub_render_pt, &arg, i, (i * rowPerthd), ((i + 1) * rowPerthd));
-#endif
+
 		}
 		// last thread
 		Thread_arg_pt arg_end{
@@ -418,11 +420,9 @@ public:
 				g,
 				this
 		};
-#if RECORD
-		thds[N_THREAD - 1] = std::thread(sub_render_record, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
-#else
+
 		thds[N_THREAD - 1] = std::thread(sub_render_pt, &arg_end, N_THREAD - 1, (N_THREAD - 1) * rowPerthd, g->height);
-#endif
+
 
 		for (int i = N_THREAD - 1; i >= 0; i--) {
 			thds[i].join();
@@ -506,7 +506,7 @@ void sub_render_pt(Thread_arg_pt* a, int threadID, int s, int e) {
 			// trace ray into each pixel
 			Vector3f estimate;
 			for (int i = 0; i < SPP; i++) {
-				Vector3f res = pt->traceRay(eyePos, rayDir, 0, Vector3f(1), nullptr, threadID, RECORD);
+				Vector3f res = pt->traceRay(eyePos, rayDir, 0, Vector3f(1), nullptr, threadID);
 				if (!isnan(res.x) && !isnan(res.y) && !isnan(res.z))	// wipe out the white noise
 					estimate = estimate + res;
 			}
@@ -514,69 +514,3 @@ void sub_render_pt(Thread_arg_pt* a, int threadID, int s, int e) {
 		}
 	}
 }
-
-
-#if RECORD
-void sub_render_record(Thread_arg_pt* a, int threadID, int s, int e) {
-	Thread_arg_pt arg = *a;
-
-	const Vector3f ul = *arg.ul;
-	const Vector3f delta_v = *arg.delta_v;
-	const Vector3f delta_h = *arg.delta_h;
-	const Vector3f c_off_h = *arg.c_off_h;
-	const Vector3f c_off_v = *arg.c_off_v;
-	PPMGenerator* g = arg.g;
-	PathTracing* pt = arg.pt;
-	std::vector<Vector3f>* rgb_array = &(g->cam.FrameBuffer.rgb);
-	const Vector3f eyePos = *arg.eyePos;
-	int Ncol = g->width;
-
-	std::ofstream fout;
-	std::string outfileName;
-	outfileName.append("./Records/" + std::to_string(s) + "to" + std::to_string(e) + ".txt");
-	fout.open(outfileName);
-
-
-	for (int y = s; y < e; y++) {
-		for (int x = 0; x < Ncol; x++) {
-			Vector3f& color = rgb_array->at(g->getIndex(x, y));
-			Vector3f rayDir = { 0,0,0 };
-			Vector3f pixelPos = ul + x * delta_h + y * delta_v + c_off_v + c_off_v;
-			rayDir = normalized((pixelPos - eyePos));
-
-			if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) {
-				records[threadID].append("\n------------\n(" + std::to_string(x) + ", " + std::to_string(y) + "): \n");
-			}
-
-			// trace ray into each pixel
-			Vector3f estimate;
-			for (int i = 0; i < SPP; i++) {
-
-				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X)
-					records[threadID].append("\n  SPP = " + std::to_string(i)) + "\n";
-
-
-				Vector3f res = pt->traceRay(eyePos, rayDir, 0, Vector3f(1), nullptr, threadID, RECORD);
-				if (!isnan(res.x) && !isnan(res.y) && !isnan(res.z))
-					estimate = estimate + res;
-
-
-				if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X)
-					records[threadID].append("  SPP = " + std::to_string(i) + " val: " + res.toString() + "\n");
-
-			}
-			estimate = estimate * SPP_inv;
-			color = estimate;
-
-
-
-			if (y >= RECORD_MIN_Y && x >= RECORD_MIN_X && y < RECORD_MAX_Y && x < RECORD_MAX_X) {
-				fout << records[threadID] << "\n[Pixel(" + std::to_string(x) + ", " + std::to_string(y) + ") val]: "
-					+ estimate.toString() + "\n";
-			}
-			records[threadID].clear();
-		}
-	}
-	fout.close();
-}
-#endif
